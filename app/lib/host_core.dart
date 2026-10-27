@@ -110,7 +110,7 @@ Future<void> installHostCloseHandler(CoreBootstrap? bootstrap) async {
 }
 
 String _bridgePath() {
-  if (!Platform.isWindows && !Platform.isLinux) {
+  if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) {
     throw UnsupportedError(
       'The Rust bridge is not configured for ${Platform.operatingSystem}.',
     );
@@ -118,12 +118,12 @@ String _bridgePath() {
   final executable = Platform.resolvedExecutable;
   final separator = Platform.pathSeparator;
   final directory = executable.substring(0, executable.lastIndexOf(separator));
-  final filename = Platform.isWindows
-      ? 'skyport_flutter_bridge.dll'
-      : 'libskyport_flutter_bridge.so';
   final bundled = Platform.isWindows
-      ? '$directory$separator$filename'
-      : '$directory${separator}lib$separator$filename';
+      ? '$directory${separator}skyport_flutter_bridge.dll'
+      : Platform.isMacOS
+      // Contents/MacOS/<executable> -> Contents/Frameworks/<library>.
+      ? '$directory$separator..${separator}Frameworks${separator}libskyport_flutter_bridge.dylib'
+      : '$directory${separator}lib${separator}libskyport_flutter_bridge.so';
   if (File(bundled).existsSync()) return bundled;
   throw FileSystemException('Bundled Rust bridge library not found: $bundled');
 }

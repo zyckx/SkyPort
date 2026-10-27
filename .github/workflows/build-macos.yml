@@ -1,0 +1,85 @@
+name: Build macOS
+
+on:
+  workflow_call:
+    inputs:
+      app_version:
+        required: true
+        type: string
+      retention-days:
+        required: false
+        type: number
+        default: 7
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.7
+  RUST_VERSION: 1.98.0
+
+jobs:
+  macos:
+    name: macOS (universal DMG)
+    runs-on: macos-latest
+    env:
+      APP_VERSION: ${{ inputs.app_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          # flutter build macos --release builds both architectures.
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> app/build/macos/Build/Intermediates.noindex/Runner.build/rust"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Download dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Build release
+        working-directory: app
+        run: flutter build macos --release
+
+      - name: Create DMG
+        working-directory: app
+        run: |
+          APP_DIR="build/macos/Build/Products/Release/skyport.app"
+          test -f "$APP_DIR/Contents/Frameworks/libskyport_flutter_bridge.dylib"
+          lipo -info "$APP_DIR/Contents/Frameworks/libskyport_flutter_bridge.dylib"
+
+          DMG_CONTENT_DIR="build/macos/dmg_content"
+          rm -rf "$DMG_CONTENT_DIR"
+          mkdir -p "$DMG_CONTENT_DIR"
+          # ditto keeps the bundle's signatures and symlinks intact.
+          ditto "$APP_DIR" "$DMG_CONTENT_DIR/SkyPort.app"
+          ln -s /Applications "$DMG_CONTENT_DIR/Applications"
+
+          DMG_FILE="SkyPort-v${APP_VERSION}-macos-universal.dmg"
+          hdiutil create -volname "SkyPort" -srcfolder "$DMG_CONTENT_DIR" -ov -format UDZO "$DMG_FILE"
+          echo "Created $DMG_FILE"
+
+      - name: Exercise mounted DMG and Rust bridge
+        run: python3 scripts/package_smoke.py "app/SkyPort-v${APP_VERSION}-macos-universal.dmg"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: SkyPort-v${{ env.APP_VERSION }}-macos-universal-dmg
+          path: app/SkyPort-v${{ env.APP_VERSION }}-macos-universal.dmg
+          retention-days: ${{ inputs.retention-days }}

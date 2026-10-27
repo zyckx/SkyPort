@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -89,14 +91,17 @@ class _LanguageMenuButtonState extends ConsumerState<LanguageMenuButton> {
         ),
       ),
       // The tooltip would cover the open menu, so it only shows when closed.
-      child: ListenableBuilder(
-        listenable: _popover,
-        builder: (context, _) => AppIconButton(
-          key: const ValueKey('language-menu-button'),
-          icon: LucideIcons.languages,
-          tooltip: _popover.isOpen ? '' : l10n.language,
-          size: 32,
-          onPressed: _popover.toggle,
+      // Shrinks to fit shorter title bars such as the native macOS one.
+      child: LayoutBuilder(
+        builder: (context, constraints) => ListenableBuilder(
+          listenable: _popover,
+          builder: (context, _) => AppIconButton(
+            key: const ValueKey('language-menu-button'),
+            icon: LucideIcons.languages,
+            tooltip: _popover.isOpen ? '' : l10n.language,
+            size: math.min(32, constraints.maxHeight - 4),
+            onPressed: _popover.toggle,
+          ),
         ),
       ),
     );

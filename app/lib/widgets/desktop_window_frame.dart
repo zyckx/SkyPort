@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -13,29 +14,69 @@ import 'ui/ui.dart';
 const double kCaptionButtonWidth = 46;
 const double kTitlebarToolWidth = 46;
 
-/// Native hit testing uses the same 48px bar and 46px caption-button widths.
+/// Smallest macOS bar; the runner reports the real native title bar height.
+const double kMacTitlebarMinHeight = 28;
+
+/// How the desktop runner decorates the window.
+enum WindowFrameStyle {
+  /// No custom frame; the platform draws everything.
+  system,
+
+  /// Undecorated window: Flutter draws the bar and the caption buttons.
+  captionButtons,
+
+  /// Transparent native title bar: Flutter draws the bar beside the traffic lights.
+  macos;
+
+  static WindowFrameStyle get platform => Platform.isMacOS
+      ? macos
+      : Platform.isWindows || Platform.isLinux
+      ? captionButtons
+      : system;
+}
+
+/// Windows/Linux native hit testing uses the same 48px bar and 46px widths.
 class DesktopWindowFrame extends StatefulWidget {
-  const DesktopWindowFrame({required this.child, this.tool, super.key});
+  const DesktopWindowFrame({
+    required this.child,
+    this.tool,
+    this.style,
+    super.key,
+  });
   final Widget child;
 
-  /// Optional compact control shown left of the caption buttons.
+  /// Optional compact control shown at the trailing end of the bar.
   final Widget? tool;
+
+  /// Defaults to [WindowFrameStyle.platform].
+  final WindowFrameStyle? style;
 
   @override
   State<DesktopWindowFrame> createState() => _DesktopWindowFrameState();
 }
 
+typedef _WindowState = ({
+  bool maximized,
+  bool active,
+  bool maximizeHovered,
+  double titlebarHeight,
+  double leadingInset,
+});
+
 class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
   static const _channel = MethodChannel('skyport/window');
   ({String title, bool dark})? _configuration;
-  ({bool maximized, bool active, bool maximizeHovered}) _window = (
+  _WindowState _window = (
     maximized: false,
     active: true,
     maximizeHovered: false,
+    titlebarHeight: 0,
+    leadingInset: 0,
   );
   bool _scheduled = false;
 
-  bool get _supported => Platform.isWindows || Platform.isLinux;
+  WindowFrameStyle get _style => widget.style ?? WindowFrameStyle.platform;
+  bool get _supported => _style != WindowFrameStyle.system;
 
   @override
   void initState() {
@@ -77,10 +118,13 @@ class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
 
   void _updateWindow(Map value) {
     if (!mounted) return;
-    final window = (
+    final _WindowState window = (
       maximized: value['maximized'] as bool,
       active: value['active'] as bool,
       maximizeHovered: value['maximizeHovered'] as bool,
+      // Reported by the macOS runner only.
+      titlebarHeight: (value['titlebarHeight'] as num?)?.toDouble() ?? 0,
+      leadingInset: (value['leadingInset'] as num?)?.toDouble() ?? 0,
     );
     if (_window != window) setState(() => _window = window);
   }
@@ -119,70 +163,94 @@ class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
     final foreground = _window.active
         ? colors.foreground
         : colors.mutedForeground;
+    final mac = _style == WindowFrameStyle.macos;
+    final height = mac
+        ? math.max(_window.titlebarHeight, kMacTitlebarMinHeight)
+        : 48.0;
+    final iconSize = mac ? 16.0 : 22.0;
+    Widget heading = Row(
+      children: [
+        SizedBox(width: mac ? math.max(_window.leadingInset, 12) : 16),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(mac ? 4 : 5),
+          child: SvgPicture.asset(
+            'assets/icon.svg',
+            width: iconSize,
+            height: iconSize,
+            excludeFromSemantics: true,
+          ),
+        ),
+        SizedBox(width: mac ? 8 : 10),
+        Expanded(
+          child: Text(
+            l10n.appTitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.large.copyWith(
+              fontSize: mac ? 13 : 15,
+              fontWeight: FontWeight.w600,
+              color: foreground,
+            ),
+          ),
+        ),
+      ],
+    );
+    if (mac) {
+      // Windows/Linux drag natively through hit testing; macOS asks the runner.
+      heading = GestureDetector(
+        key: const ValueKey('titlebar-drag-region'),
+        behavior: HitTestBehavior.opaque,
+        onPanStart: (_) => unawaited(_invoke('startDrag')),
+        onDoubleTap: () => unawaited(_invoke('titlebarDoubleClick')),
+        child: SizedBox(height: height, child: heading),
+      );
+    }
     return Overlay.wrap(
       child: Column(
         children: [
           Container(
-            height: 48,
+            height: height,
             decoration: BoxDecoration(
               color: colors.background,
               border: Border(bottom: BorderSide(color: colors.border)),
             ),
             child: Row(
               children: [
-                const SizedBox(width: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(5),
-                  child: SvgPicture.asset(
-                    'assets/icon.svg',
-                    width: 22,
-                    height: 22,
-                    excludeFromSemantics: true,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    l10n.appTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.large.copyWith(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: foreground,
-                    ),
-                  ),
-                ),
+                Expanded(child: heading),
                 // Native hit testing reserves this slot as client area.
                 SizedBox(
                   width: kTitlebarToolWidth,
-                  height: 48,
+                  height: height,
                   child: Center(child: widget.tool),
                 ),
-                _CaptionButton(
-                  label: l10n.windowMinimize,
-                  icon: LucideIcons.minus,
-                  foreground: foreground,
-                  onPressed: () => unawaited(_invoke('minimize')),
-                ),
-                _CaptionButton(
-                  label: _window.maximized
-                      ? l10n.windowRestore
-                      : l10n.windowMaximize,
-                  icon: _window.maximized
-                      ? LucideIcons.copy
-                      : LucideIcons.square,
-                  foreground: foreground,
-                  nativeHovered: _window.maximizeHovered,
-                  onPressed: () => unawaited(_invoke('toggleMaximize')),
-                ),
-                _CaptionButton(
-                  label: l10n.windowClose,
-                  icon: LucideIcons.x,
-                  foreground: foreground,
-                  isClose: true,
-                  onPressed: () => unawaited(_invoke('close')),
-                ),
+                if (mac)
+                  const SizedBox(width: 6)
+                else ...[
+                  _CaptionButton(
+                    label: l10n.windowMinimize,
+                    icon: LucideIcons.minus,
+                    foreground: foreground,
+                    onPressed: () => unawaited(_invoke('minimize')),
+                  ),
+                  _CaptionButton(
+                    label: _window.maximized
+                        ? l10n.windowRestore
+                        : l10n.windowMaximize,
+                    icon: _window.maximized
+                        ? LucideIcons.copy
+                        : LucideIcons.square,
+                    foreground: foreground,
+                    nativeHovered: _window.maximizeHovered,
+                    onPressed: () => unawaited(_invoke('toggleMaximize')),
+                  ),
+                  _CaptionButton(
+                    label: l10n.windowClose,
+                    icon: LucideIcons.x,
+                    foreground: foreground,
+                    isClose: true,
+                    onPressed: () => unawaited(_invoke('close')),
+                  ),
+                ],
               ],
             ),
           ),

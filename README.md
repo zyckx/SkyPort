@@ -40,7 +40,7 @@
     *   窗口尺寸、位置和串口偏好会被记忆，提升日常使用效率。
 
 *   **跨平台**
-    *   当前支持 Windows 和 Linux 桌面平台；macOS 项目文件存在，但暂不视为已支持平台。
+    *   当前支持 Windows 和 Linux 桌面平台；macOS 提供实验性构建（CI 产出通用 DMG），尚未完成实机验收，暂不视为已支持平台。
 
 ## 📥 下载安装
 
@@ -81,10 +81,11 @@
     ```bash
     flutter build windows --release  # Windows host
     flutter build linux --release    # Linux host
+    flutter build macos --release    # macOS host（实验性）
     ```
-    macOS 项目文件保留，但未接入本次 native 打包和验收，不在当前正式支持范围内。
+    macOS 发布构建同时包含 arm64 与 x86_64，需先执行 `rustup target add aarch64-apple-darwin x86_64-apple-darwin`。
 
-Flutter 的 Linux/Windows CMake 构建会调用 Cargo，并将 bridge 动态库放入最终 bundle。不要只复制可执行文件；Linux 库位于 `lib/libskyport_flutter_bridge.so`，Windows 库与 `.exe` 相邻。
+Flutter 的 Linux/Windows CMake 构建和 macOS Xcode 构建会调用 Cargo，并将 bridge 动态库放入最终 bundle。不要只复制可执行文件；Linux 库位于 `lib/libskyport_flutter_bridge.so`，Windows 库与 `.exe` 相邻，macOS 库位于 `.app/Contents/Frameworks/libskyport_flutter_bridge.dylib`。
 
 从仓库根目录运行检查：
 
@@ -94,7 +95,7 @@ python3 scripts/pty_ui_smoke.py                  # Linux，真实 bridge + UI + 
 python3 scripts/package_smoke.py <bundle或发行包> # 验证打包后的真实加载与生命周期
 ```
 
-有显示环境时可直接运行 smoke；无显示的 Linux CI 使用 `xvfb-run -a`。支持检查目录、deb、rpm、AppImage 和 Windows portable zip。Windows 安装程序须先安装到隔离目录，再检查该目录；物理串口和不同架构仍需各自验收。
+有显示环境时可直接运行 smoke；无显示的 Linux CI 使用 `xvfb-run -a`。支持检查目录、deb、rpm、AppImage、Windows portable zip 和 macOS DMG。Windows 安装程序须先安装到隔离目录，再检查该目录；物理串口和不同架构仍需各自验收。
 
 RPM 包的 smoke 检查需要 `bsdtar`（Debian/Ubuntu：`sudo apt-get install libarchive-tools`）。
 
