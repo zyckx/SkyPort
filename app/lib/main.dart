@@ -7,22 +7,28 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'host_core.dart';
 import 'models/ui_state.dart';
 import 'providers/common_providers.dart';
 import 'providers/ui_controller.dart';
+import 'providers/locale_provider.dart';
 import 'providers/theme_provider.dart';
 import 'theme.dart';
 import 'widgets/application_settings.dart';
-import 'widgets/connection_rail.dart';
+import 'widgets/nav_rail.dart';
+import 'widgets/pages/quick_commands_page.dart';
+import 'widgets/pages/tools_page.dart';
 import 'widgets/left_panel.dart';
 import 'widgets/right_panel.dart';
 import 'widgets/status_bar.dart';
 import 'widgets/desktop_window_frame.dart';
+import 'widgets/language_menu.dart';
 import 'services/app_logger.dart';
 import 'l10n/app_localizations.dart';
 import 'utils/error_messages.dart';
 import 'widgets/shared/error_notice.dart';
+import 'widgets/ui/ui.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -95,13 +101,19 @@ class SerialDebuggerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (startupFailure != null) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        builder: (context, child) => DesktopWindowFrame(child: child!),
-        home: StartupFailurePage(details: startupFailure!),
+      final shad = getShadLightTheme();
+      return ShadTheme(
+        data: shad,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+          theme: materialThemeFrom(shad),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) =>
+              ShadAppBuilder(child: DesktopWindowFrame(child: child!)),
+          home: StartupFailurePage(details: startupFailure!),
+        ),
       );
     }
     final themeMode = ref.watch(themeModeProvider);
@@ -115,17 +127,31 @@ class SerialDebuggerApp extends ConsumerWidget {
       systemAccent: systemAccent,
       brightness: brightness,
     ).seed;
+    final lightShad = getShadLightTheme(seedFor(Brightness.light));
+    final darkShad = getShadDarkTheme(seedFor(Brightness.dark));
     return _DynamicAccentColorMonitor(
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-        theme: getLightTheme(seedFor(Brightness.light)),
-        darkTheme: getDarkTheme(seedFor(Brightness.dark)),
+      child: ShadApp.custom(
+        theme: lightShad,
+        darkTheme: darkShad,
         themeMode: themeMode,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        builder: (context, child) => DesktopWindowFrame(child: child!),
-        home: const HomePage(),
+        appBuilder: (context) => MaterialApp(
+          debugShowCheckedModeBanner: false,
+          onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+          theme: materialThemeFrom(lightShad),
+          darkTheme: materialThemeFrom(darkShad),
+          themeMode: themeMode,
+          locale: ref.watch(languageProvider).locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => ShadAppBuilder(
+            backgroundColor: Colors.transparent,
+            child: DesktopWindowFrame(
+              tool: const LanguageMenuButton(),
+              child: child!,
+            ),
+          ),
+          home: const HomePage(),
+        ),
       ),
     );
   }
@@ -208,12 +234,12 @@ class StartupFailurePage extends StatelessWidget {
             children: [
               Text(
                 l10n.startupFailed,
-                style: Theme.of(context).textTheme.headlineSmall,
+                style: ShadTheme.of(context).textTheme.h4,
               ),
               const SizedBox(height: 12),
               SelectableText(localizedError(l10n, details)),
               const SizedBox(height: 12),
-              TextButton(
+              ShadButton.outline(
                 onPressed: () => showErrorDetails(context, details),
                 child: Text(l10n.diagnosticDetails),
               ),
@@ -236,10 +262,9 @@ class _HomePageState extends ConsumerState<HomePage>
     with SingleTickerProviderStateMixin {
   static const _panelOpenKey = 'ui_configuration_panel_open';
   late TextEditingController _bufferController;
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late final AnimationController _panelAnimation;
   late bool _panelOpen;
-  bool _settingsSelected = false;
+  WorkspacePage _page = WorkspacePage.port;
 
   @override
   void initState() {
@@ -307,11 +332,10 @@ class _HomePageState extends ConsumerState<HomePage>
               body: SafeArea(
                 child: Row(
                   children: [
-                    ConnectionRail(
+                    NavRail(
                       panelOpen: _panelOpen,
-                      settingsSelected: _settingsSelected,
-                      onSerial: () => _openPage(false),
-                      onSettings: () => _openPage(true),
+                      page: _page,
+                      onSelect: _openPage,
                     ),
                     Expanded(
                       child: Column(
@@ -405,55 +429,33 @@ class _HomePageState extends ConsumerState<HomePage>
     );
   }
 
-  void _openPage(bool settings) {
-    final open = !_panelOpen || _settingsSelected != settings;
-    setState(() => _settingsSelected = settings);
+  void _openPage(WorkspacePage page) {
+    final open = !_panelOpen || _page != page;
+    setState(() => _page = page);
     _setPanelOpen(open);
   }
 
+  Widget _pageContent(WorkspacePage page) => switch (page) {
+    WorkspacePage.port => const LeftPanel(),
+    WorkspacePage.commands => const QuickCommandsPage(),
+    WorkspacePage.tools => const ToolsPage(),
+    WorkspacePage.settings => SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: ApplicationSettings(controller: _bufferController),
+    ),
+  };
+
   Widget _configurationPanel(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    const fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.all(Radius.circular(12)),
-    );
-    return Theme(
-      data: theme.copyWith(
-        inputDecorationTheme: theme.inputDecorationTheme.copyWith(
-          border: fieldBorder,
-        ),
-        dropdownMenuTheme: theme.dropdownMenuTheme.copyWith(
-          inputDecorationTheme: const InputDecorationThemeData(
-            border: fieldBorder,
-          ),
-          menuStyle: const MenuStyle(
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-              ),
-            ),
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Material(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
-          child: IndexedStack(
-            index: _settingsSelected ? 1 : 0,
-            children: [
-              const LeftPanel(),
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ApplicationSettings(
-                  controller: _bufferController,
-                  formKey: _formKey,
-                ),
-              ),
-            ],
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: AppPanel(
+        muted: true,
+        clip: true,
+        child: IndexedStack(
+          index: _page.index,
+          children: [
+            for (final page in WorkspacePage.values) _pageContent(page),
+          ],
         ),
       ),
     );

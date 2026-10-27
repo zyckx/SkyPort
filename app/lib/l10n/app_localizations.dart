@@ -955,6 +955,300 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An unexpected error occurred. See diagnostic details.'**
   String get errorUnexpected;
+
+  /// No description provided for @scrollToBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll to latest'**
+  String get scrollToBottom;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @toolsPageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools'**
+  String get toolsPageLabel;
+
+  /// No description provided for @toolChecksum.
+  ///
+  /// In en, this message translates to:
+  /// **'Checksum'**
+  String get toolChecksum;
+
+  /// No description provided for @toolInputFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Input format'**
+  String get toolInputFormat;
+
+  /// No description provided for @toolInputTextUtf8.
+  ///
+  /// In en, this message translates to:
+  /// **'Text (UTF-8)'**
+  String get toolInputTextUtf8;
+
+  /// No description provided for @toolByteCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} bytes'**
+  String toolByteCount(int count);
+
+  /// No description provided for @toolChecksumNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Values are shown big-endian and are never added to sent data.'**
+  String get toolChecksumNote;
+
+  /// No description provided for @toolHexText.
+  ///
+  /// In en, this message translates to:
+  /// **'Hex and text'**
+  String get toolHexText;
+
+  /// No description provided for @toolTextToHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Text → Hex'**
+  String get toolTextToHex;
+
+  /// No description provided for @toolHexToText.
+  ///
+  /// In en, this message translates to:
+  /// **'Hex → Text'**
+  String get toolHexToText;
+
+  /// No description provided for @toolNumberBase.
+  ///
+  /// In en, this message translates to:
+  /// **'Number base'**
+  String get toolNumberBase;
+
+  /// No description provided for @toolInvalidNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a valid number in this base'**
+  String get toolInvalidNumber;
+
+  /// No description provided for @copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copy;
+
+  /// No description provided for @copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get copied;
+
+  /// No description provided for @quickCommandsPageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get quickCommandsPageLabel;
+
+  /// No description provided for @quickCommandAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add command'**
+  String get quickCommandAdd;
+
+  /// No description provided for @quickCommandEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit command'**
+  String get quickCommandEdit;
+
+  /// No description provided for @quickCommandName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get quickCommandName;
+
+  /// No description provided for @quickCommandNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Defaults to the content'**
+  String get quickCommandNameHint;
+
+  /// No description provided for @quickCommandPayload.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get quickCommandPayload;
+
+  /// No description provided for @quickCommandPayloadRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter content to send'**
+  String get quickCommandPayloadRequired;
+
+  /// No description provided for @quickCommandsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved commands yet. Add the commands you use often to send them with one click.'**
+  String get quickCommandsEmpty;
+
+  /// No description provided for @quickCommandNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a port to send'**
+  String get quickCommandNotConnected;
+
+  /// No description provided for @quickCommandListFull.
+  ///
+  /// In en, this message translates to:
+  /// **'The command list is full.'**
+  String get quickCommandListFull;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @receiveTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive'**
+  String get receiveTab;
+
+  /// No description provided for @chartTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart'**
+  String get chartTab;
+
+  /// No description provided for @chartEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Received lines of numbers are plotted here, e.g. \"12.5,30\" or \"temp:23.5 hum:41\". One series per column.'**
+  String get chartEmpty;
+
+  /// No description provided for @chartPausedEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Plotting is paused.'**
+  String get chartPausedEmpty;
+
+  /// No description provided for @chartPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause plotting'**
+  String get chartPause;
+
+  /// No description provided for @chartResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume plotting'**
+  String get chartResume;
+
+  /// No description provided for @chartClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear chart'**
+  String get chartClear;
+
+  /// No description provided for @chartSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} non-numeric lines'**
+  String chartSkipped(int count);
+
+  /// No description provided for @chartSkippedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines that are not purely numeric are skipped and not plotted.'**
+  String get chartSkippedHint;
+
+  /// No description provided for @errorModemLineUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'RTS is controlled by hardware flow control.'**
+  String get errorModemLineUnavailable;
+
+  /// No description provided for @errorSendScheduleConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-send and command loop cannot run at the same time.'**
+  String get errorSendScheduleConflict;
+
+  /// No description provided for @errorSequenceTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many commands in the loop.'**
+  String get errorSequenceTooLong;
+
+  /// No description provided for @modemLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Control lines'**
+  String get modemLines;
+
+  /// No description provided for @modemLinesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied to the open port. Both lines are released when the port opens or closes.'**
+  String get modemLinesHint;
+
+  /// No description provided for @modemLinesHardwareFlow.
+  ///
+  /// In en, this message translates to:
+  /// **'RTS is controlled by hardware flow control'**
+  String get modemLinesHardwareFlow;
+
+  /// No description provided for @sequenceLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Loop all'**
+  String get sequenceLoop;
+
+  /// No description provided for @sequenceLoopHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Send every command in order, repeating, one per interval. Stops on a write failure.'**
+  String get sequenceLoopHint;
+
+  /// No description provided for @sequenceRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending {current}/{total}'**
+  String sequenceRunning(int current, int total);
+
+  /// No description provided for @sequenceStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Loop stopped: {message}'**
+  String sequenceStopped(String message);
+
+  /// No description provided for @sequenceStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start loop'**
+  String get sequenceStart;
+
+  /// No description provided for @sequenceStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop loop'**
+  String get sequenceStop;
 }
 
 class _AppLocalizationsDelegate

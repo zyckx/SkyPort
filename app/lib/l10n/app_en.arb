@@ -172,5 +172,75 @@
   "errorPluginUnavailable": "A required platform service is unavailable.",
   "errorPlatform": "A system service call failed.",
   "errorPlatformUnsupported": "This platform is not supported.",
-  "errorUnexpected": "An unexpected error occurred. See diagnostic details."
+  "errorUnexpected": "An unexpected error occurred. See diagnostic details.",
+  "scrollToBottom": "Scroll to latest",
+  "cancel": "Cancel",
+  "language": "Language",
+  "toolsPageLabel": "Tools",
+  "toolChecksum": "Checksum",
+  "toolInputFormat": "Input format",
+  "toolInputTextUtf8": "Text (UTF-8)",
+  "toolByteCount": "{count} bytes",
+  "@toolByteCount": {
+    "placeholders": {
+      "count": {"type":"int"}
+    }
+  },
+  "toolChecksumNote": "Values are shown big-endian and are never added to sent data.",
+  "toolHexText": "Hex and text",
+  "toolTextToHex": "Text → Hex",
+  "toolHexToText": "Hex → Text",
+  "toolNumberBase": "Number base",
+  "toolInvalidNumber": "Not a valid number in this base",
+  "copy": "Copy",
+  "copied": "Copied to clipboard",
+  "quickCommandsPageLabel": "Commands",
+  "quickCommandAdd": "Add command",
+  "quickCommandEdit": "Edit command",
+  "quickCommandName": "Name",
+  "quickCommandNameHint": "Defaults to the content",
+  "quickCommandPayload": "Content",
+  "quickCommandPayloadRequired": "Enter content to send",
+  "quickCommandsEmpty": "No saved commands yet. Add the commands you use often to send them with one click.",
+  "quickCommandNotConnected": "Connect a port to send",
+  "quickCommandListFull": "The command list is full.",
+  "delete": "Delete",
+  "save": "Save",
+  "receiveTab": "Receive",
+  "chartTab": "Chart",
+  "chartEmpty": "Received lines of numbers are plotted here, e.g. \"12.5,30\" or \"temp:23.5 hum:41\". One series per column.",
+  "chartPausedEmpty": "Plotting is paused.",
+  "chartPause": "Pause plotting",
+  "chartResume": "Resume plotting",
+  "chartClear": "Clear chart",
+  "chartSkipped": "{count} non-numeric lines",
+  "@chartSkipped": {
+    "placeholders": {
+      "count": {"type":"int"}
+    }
+  },
+  "chartSkippedHint": "Lines that are not purely numeric are skipped and not plotted.",
+  "errorModemLineUnavailable": "RTS is controlled by hardware flow control.",
+  "errorSendScheduleConflict": "Auto-send and command loop cannot run at the same time.",
+  "errorSequenceTooLong": "Too many commands in the loop.",
+  "modemLines": "Control lines",
+  "modemLinesHint": "Applied to the open port. Both lines are released when the port opens or closes.",
+  "modemLinesHardwareFlow": "RTS is controlled by hardware flow control",
+  "sequenceLoop": "Loop all",
+  "sequenceLoopHint": "Send every command in order, repeating, one per interval. Stops on a write failure.",
+  "sequenceRunning": "Sending {current}/{total}",
+  "@sequenceRunning": {
+    "placeholders": {
+      "current": {"type":"int"},
+      "total": {"type":"int"}
+    }
+  },
+  "sequenceStopped": "Loop stopped: {message}",
+  "@sequenceStopped": {
+    "placeholders": {
+      "message": {"type":"String"}
+    }
+  },
+  "sequenceStart": "Start loop",
+  "sequenceStop": "Stop loop"
 }

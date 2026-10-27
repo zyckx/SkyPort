@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../helpers/test_app.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skyport/l10n/app_localizations.dart';
 import 'package:skyport/main.dart';
@@ -11,7 +14,7 @@ import 'package:skyport/providers/common_providers.dart';
 import 'package:skyport/providers/ui_controller.dart';
 import 'package:skyport/widgets/left_panel.dart';
 import 'package:skyport/widgets/application_settings.dart';
-import 'package:skyport/widgets/connection_rail.dart';
+import 'package:skyport/widgets/nav_rail.dart';
 import 'package:skyport/widgets/status_bar.dart';
 import 'package:skyport/widgets/right_panel/send_input_widget.dart';
 
@@ -79,11 +82,7 @@ void main() {
             uiControllerProvider.overrideWith(LayoutController.new),
             sharedPreferencesProvider.overrideWithValue(prefs),
           ],
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: HomePage(),
-          ),
+          child: shadTestApp(home: const HomePage()),
         ),
       );
       await tester.pumpAndSettle();
@@ -92,10 +91,10 @@ void main() {
     await mount();
     final l10n = AppLocalizations.of(tester.element(find.byType(HomePage)));
     final expand = find.byWidgetPredicate(
-      (widget) => widget is ConnectionRail && !widget.panelOpen,
+      (widget) => widget is NavRail && !widget.panelOpen,
     );
     final collapse = find.byWidgetPredicate(
-      (widget) => widget is ConnectionRail && widget.panelOpen,
+      (widget) => widget is NavRail && widget.panelOpen,
     );
     expect(collapse, findsOneWidget);
 
@@ -103,13 +102,13 @@ void main() {
     expect(collapse, findsOneWidget);
     expect(find.byType(LeftPanel).hitTestable(), findsOneWidget);
 
-    await tester.tap(find.byTooltip(l10n.serialPageLabel));
+    await tester.tap(findTooltip(l10n.serialPageLabel));
     await tester.pumpAndSettle();
     await mount();
     expect(expand, findsOneWidget);
     expect(find.byType(LeftPanel).hitTestable(), findsNothing);
 
-    await tester.tap(find.byTooltip(l10n.settingsPageLabel));
+    await tester.tap(findTooltip(l10n.settingsPageLabel));
     await tester.pumpAndSettle();
     await mount();
     expect(collapse, findsOneWidget);
@@ -135,36 +134,29 @@ void main() {
             uiControllerProvider.overrideWith(LayoutController.new),
             sharedPreferencesProvider.overrideWithValue(prefs),
           ],
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: HomePage(),
-          ),
+          child: shadTestApp(home: const HomePage()),
         ),
       );
       final input = find.descendant(
         of: find.byType(SendInputWidget),
-        matching: find.byType(TextFormField),
+        matching: find.byType(EditableText),
       );
       await tester.enterText(input, 'unsent draft');
-      final textController = tester.widget<TextFormField>(input).controller!;
+      final textController = tester.widget<EditableText>(input).controller;
       textController.selection = const TextSelection.collapsed(offset: 3);
       await tester.pump();
 
       final l10n = AppLocalizations.of(tester.element(find.byType(HomePage)));
-      final rail = find.byType(ConnectionRail);
+      final rail = find.byType(NavRail);
       final portPage = find.descendant(
         of: rail,
         matching: find.text(l10n.serialPageLabel),
       );
-      final settingsPage = find.byTooltip(l10n.settingsPageLabel);
-      final power = find.descendant(
-        of: find.byType(StatusBar),
-        matching: find.byType(IconButton),
-      );
+      final settingsPage = findTooltip(l10n.settingsPageLabel);
+      final power = find.byKey(const ValueKey('status-connection-toggle'));
       final send = find.descendant(
         of: find.byType(SendInputWidget),
-        matching: find.byType(FilledButton),
+        matching: find.byType(ShadButton),
       );
       final controller =
           ProviderScope.containerOf(
@@ -174,41 +166,36 @@ void main() {
       await tester.tap(power);
       await tester.pumpAndSettle();
       expect(controller.connection, UiConnection.disconnected);
-      expect(tester.widget<ConnectionRail>(rail).panelOpen, isTrue);
+      expect(tester.widget<NavRail>(rail).panelOpen, isTrue);
       await tester.tap(power);
       await tester.pumpAndSettle();
       expect(controller.connection, UiConnection.connected);
-      expect(tester.widget<ConnectionRail>(rail).panelOpen, isTrue);
+      expect(tester.widget<NavRail>(rail).panelOpen, isTrue);
       await tester.tap(settingsPage);
       await tester.pumpAndSettle();
       final buffer = find.descendant(
         of: find.byType(ApplicationSettings),
-        matching: find.byType(TextFormField),
+        matching: find.byType(EditableText),
       );
       await tester.ensureVisible(buffer);
       await tester.enterText(buffer, '25');
       await tester.pump();
       await tester.tap(settingsPage);
       await tester.pumpAndSettle();
-      expect(tester.widget<ConnectionRail>(rail).panelOpen, isFalse);
+      expect(tester.widget<NavRail>(rail).panelOpen, isFalse);
       expect(buffer.hitTestable(), findsNothing);
       await tester.tap(settingsPage);
       await tester.pumpAndSettle();
       expect(find.byType(ApplicationSettings), findsOneWidget);
-      expect(tester.widget<TextFormField>(buffer).controller!.text, '25');
+      expect(tester.widget<EditableText>(buffer).controller.text, '25');
 
-      tester
-          .widget<TextField>(
-            find.descendant(of: input, matching: find.byType(TextField)),
-          )
-          .focusNode!
-          .requestFocus();
+      tester.widget<EditableText>(input).focusNode.requestFocus();
       await tester.pump();
       tester.view.physicalSize = const Size(320, 480);
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
-      expect(tester.widget<ConnectionRail>(rail).panelOpen, isFalse);
+      expect(tester.widget<NavRail>(rail).panelOpen, isFalse);
 
       for (final size in [
         const Size(320, 480),
@@ -222,37 +209,24 @@ void main() {
         await tester.tap(portPage);
         await tester.pumpAndSettle();
         expect(find.byType(LeftPanel), findsOneWidget);
-        await tester.tap(find.widgetWithText(FilledButton, l10n.disconnect));
+        await tester.tap(find.widgetWithText(ShadButton, l10n.disconnect));
         await tester.pumpAndSettle();
         expect(controller.connection, UiConnection.disconnected);
-        await tester.tap(find.widgetWithText(FilledButton, l10n.connect));
+        await tester.tap(find.widgetWithText(ShadButton, l10n.connect));
         await tester.pumpAndSettle();
         expect(controller.connection, UiConnection.connected);
         expect(power.hitTestable(), findsOneWidget);
         final baudMenu = find.byWidgetPredicate(
           (widget) =>
-              widget is DropdownMenu<int> && widget.initialSelection == 115200,
+              widget is ShadSelect<int> && widget.initialValue == 115200,
         );
-        final baudInput = find.descendant(
-          of: baudMenu,
-          matching: find.byType(EditableText),
+        final baudText = tester.renderObject<RenderParagraph>(
+          find.descendant(of: baudMenu, matching: find.text('115200')),
         );
-        final baudText = tester
-            .state<EditableTextState>(baudInput)
-            .renderEditable;
-        final textLayout = TextPainter(
-          text: baudText.text,
-          textDirection: baudText.textDirection,
-          textScaler: baudText.textScaler,
-          maxLines: 1,
-        )..layout();
-        expect(textLayout.width, lessThanOrEqualTo(baudText.size.width));
-        textLayout.dispose();
+        expect(baudText.didExceedMaxLines, isFalse);
         final panelRect = tester.getRect(find.byType(LeftPanel));
         final baudRect = tester.getRect(baudMenu);
-        final flowRect = tester.getRect(
-          find.byType(DropdownMenu<UiFlowControl>),
-        );
+        final flowRect = tester.getRect(find.byType(ShadSelect<UiFlowControl>));
         expect(baudRect.left, greaterThanOrEqualTo(panelRect.left));
         expect(flowRect.right, lessThanOrEqualTo(panelRect.right));
         expect(flowRect.top, baudRect.top);
@@ -260,36 +234,36 @@ void main() {
         expect(flowRect.left, greaterThan(baudRect.right));
         await tester.tap(portPage);
         await tester.pumpAndSettle();
-        expect(tester.widget<ConnectionRail>(rail).panelOpen, isFalse);
+        expect(tester.widget<NavRail>(rail).panelOpen, isFalse);
         expect(find.byType(LeftPanel).hitTestable(), findsNothing);
         await tester.tap(portPage);
         await tester.pumpAndSettle();
-        expect(tester.widget<ConnectionRail>(rail).panelOpen, isTrue);
+        expect(tester.widget<NavRail>(rail).panelOpen, isTrue);
         expect(tester.takeException(), isNull);
 
         if (size.width == 799) {
           await tester.tapAt(const Offset(780, 150));
           await tester.pumpAndSettle();
-          expect(tester.widget<ConnectionRail>(rail).panelOpen, isTrue);
+          expect(tester.widget<NavRail>(rail).panelOpen, isTrue);
         }
         await tester.tap(power);
         await tester.pumpAndSettle();
-        expect(tester.widget<FilledButton>(send).onPressed, isNull);
+        expect(tester.widget<ShadButton>(send).onPressed, isNull);
         await tester.tap(power);
         await tester.pumpAndSettle();
-        expect(tester.widget<FilledButton>(send).onPressed, isNotNull);
+        expect(tester.widget<ShadButton>(send).onPressed, isNotNull);
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
         await tester.pumpAndSettle();
-        expect(tester.widget<ConnectionRail>(rail).panelOpen, isFalse);
+        expect(tester.widget<NavRail>(rail).panelOpen, isFalse);
         expect(
-          tester.widget<TextFormField>(input).controller,
+          tester.widget<EditableText>(input).controller,
           same(textController),
         );
         expect(textController.text, 'unsent draft');
         expect(textController.selection.baseOffset, 3);
         await tester.tap(settingsPage);
         await tester.pumpAndSettle();
-        expect(tester.widget<TextFormField>(buffer).controller!.text, '25');
+        expect(tester.widget<EditableText>(buffer).controller.text, '25');
       }
 
       tester.view.physicalSize = const Size(720, 640);
@@ -307,18 +281,18 @@ void main() {
       ]) {
         controller.showConnection(connection);
         await tester.pump();
-        expect(tester.widget<IconButton>(power).onPressed, isNull);
+        expect(tester.widget<ShadButton>(power).onPressed, isNull);
       }
       controller.showConnection(UiConnection.reconnecting);
       await tester.pump();
       await tester.tap(power);
       await tester.pumpAndSettle();
       expect(controller.connection, UiConnection.disconnected);
-      expect(tester.widget<FilledButton>(send).onPressed, isNull);
+      expect(tester.widget<ShadButton>(send).onPressed, isNull);
 
       controller.showPort('');
       await tester.pumpAndSettle();
-      expect(tester.widget<IconButton>(power).onPressed, isNull);
+      expect(tester.widget<ShadButton>(power).onPressed, isNull);
       expect(controller.connection, UiConnection.disconnected);
     },
   );
@@ -336,12 +310,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [uiControllerProvider.overrideWith(LayoutController.new)],
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          theme: ThemeData.light(useMaterial3: true),
-          home: const StatusBar(),
-        ),
+        child: shadTestApp(home: const StatusBar()),
       ),
     );
     expect(find.textContaining('115200 · 8N1'), findsOneWidget);
@@ -355,7 +324,7 @@ void main() {
     expect(statusText.maxLines, 1);
     expect(statusText.overflow, TextOverflow.ellipsis);
     var theme = Theme.of(tester.element(find.byType(StatusBar)));
-    var status = tester.widget<Icon>(find.byIcon(Icons.circle)).color!;
+    var status = statusDotColor(tester);
     expect(
       contrast(status, theme.colorScheme.surface),
       greaterThanOrEqualTo(3),
@@ -367,7 +336,7 @@ void main() {
             as LayoutController;
     lightController.showConnection(UiConnection.reconfiguring);
     await tester.pump();
-    status = tester.widget<Icon>(find.byIcon(Icons.circle)).color!;
+    status = statusDotColor(tester);
     expect(
       contrast(status, theme.colorScheme.surface),
       greaterThanOrEqualTo(3),
@@ -376,16 +345,15 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [uiControllerProvider.overrideWith(LayoutController.new)],
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          theme: ThemeData.dark(useMaterial3: true),
+        child: shadTestApp(
+          brightness: Brightness.dark,
           home: const StatusBar(),
         ),
       ),
     );
+    await tester.pumpAndSettle();
     theme = Theme.of(tester.element(find.byType(StatusBar)));
-    status = tester.widget<Icon>(find.byIcon(Icons.circle)).color!;
+    status = statusDotColor(tester);
     expect(
       contrast(status, theme.colorScheme.surface),
       greaterThanOrEqualTo(3),
@@ -397,7 +365,7 @@ void main() {
             as LayoutController;
     darkController.showConnection(UiConnection.reconfiguring);
     await tester.pump();
-    status = tester.widget<Icon>(find.byIcon(Icons.circle)).color!;
+    status = statusDotColor(tester);
     expect(
       contrast(status, theme.colorScheme.surface),
       greaterThanOrEqualTo(3),

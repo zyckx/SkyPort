@@ -52,6 +52,9 @@ String _coreError(AppLocalizations l10n, rust.CoreError error) {
     rust.ErrorCode.noLogsToExport => l10n.errorNoLogsToExport,
     rust.ErrorCode.exportFailed => l10n.errorExportLog,
     rust.ErrorCode.queueCapacityInvalid => l10n.errorQueueCapacityInvalid,
+    rust.ErrorCode.modemLineUnavailable => l10n.errorModemLineUnavailable,
+    rust.ErrorCode.sendScheduleConflict => l10n.errorSendScheduleConflict,
+    rust.ErrorCode.sequenceTooLong => l10n.errorSequenceTooLong,
     null => switch (error.kind) {
       rust.ErrorKind.invalidArgument => l10n.errorInvalidArgument,
       rust.ErrorKind.portNotFound => l10n.errorPortNotFound,

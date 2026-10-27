@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:skyport/src/rust/api.dart' as rust;
 
+import '../models/quick_command.dart';
 import '../models/ui_state.dart';
 import '../models/log_model.dart';
 
@@ -260,6 +261,52 @@ class UiController extends Notifier<UiState> {
 
   Future<void> send(String value) async {
     await _dispatch(rust.sendInput(handle: _handle, input: value));
+  }
+
+  /// Requests DTR/RTS levels; the core reports what the driver accepted.
+  Future<void> setModemLines({bool? dtr, bool? rts}) async {
+    await _dispatch(rust.setModemLines(handle: _handle, dtr: dtr, rts: rts));
+  }
+
+  /// Starts the core's looping sender over [commands], or stops it.
+  Future<void> setSequenceSend({
+    required bool enabled,
+    required int intervalMs,
+    required List<QuickCommand> commands,
+  }) async {
+    await _dispatch(
+      rust.setSequenceSend(
+        handle: _handle,
+        enabled: enabled,
+        intervalMs: intervalMs,
+        items: [
+          for (final command in commands)
+            rust.SequenceItem(
+              input: command.payload,
+              hex: command.hex,
+              newline: _coreNewline(command.newline),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Sends a saved command with its own encoding instead of the current send
+  /// settings. The core validates Hex and applies [newline] to text.
+  Future<void> sendCommand(
+    String payload, {
+    required bool hex,
+    required UiNewline newline,
+  }) async {
+    await _dispatch(
+      hex
+          ? rust.sendHex(handle: _handle, input: payload)
+          : rust.sendText(
+              handle: _handle,
+              text: payload,
+              newline: _coreNewline(newline),
+            ),
+    );
   }
 
   static rust.Newline _coreNewline(UiNewline value) => switch (value) {

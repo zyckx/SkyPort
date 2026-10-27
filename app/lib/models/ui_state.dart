@@ -23,6 +23,23 @@ enum UiNewline { none, lf, cr, crlf }
 
 typedef UiErrorNotice = ({rust.CoreError error, bool reconnecting});
 
+/// Runtime state of the core's looping sequence sender.
+typedef UiSequenceSend = ({
+  bool enabled,
+  int intervalMs,
+  int nextIndex,
+  int itemCount,
+  rust.CoreError? error,
+});
+
+const UiSequenceSend kSequenceIdle = (
+  enabled: false,
+  intervalMs: 0,
+  nextIndex: 0,
+  itemCount: 0,
+  error: null,
+);
+
 class UiState {
   final int sequence;
   final UiConnection connection;
@@ -55,6 +72,11 @@ class UiState {
   final bool logIncomplete;
   final bool dataGap;
 
+  /// Output modem lines as last applied by the core.
+  final bool dtr;
+  final bool rts;
+  final UiSequenceSend sequenceSend;
+
   UiState({
     required this.sequence,
     required this.connection,
@@ -86,6 +108,9 @@ class UiState {
     required this.trimmedRecords,
     required this.logIncomplete,
     this.dataGap = false,
+    this.dtr = false,
+    this.rts = false,
+    this.sequenceSend = kSequenceIdle,
   });
 
   factory UiState.fromSnapshot(
@@ -126,6 +151,9 @@ class UiState {
       trimmedRecords: snapshot.log.trimmedRecords,
       logIncomplete: snapshot.log.incomplete,
       dataGap: dataGap,
+      dtr: snapshot.modemLines.dtr,
+      rts: snapshot.modemLines.rts,
+      sequenceSend: _sequence(snapshot.sequenceSend),
     );
   }
 
@@ -160,6 +188,9 @@ class UiState {
     trimmedRecords: trimmedRecords,
     logIncomplete: logIncomplete,
     dataGap: dataGap,
+    dtr: update.modemLines.dtr,
+    rts: update.modemLines.rts,
+    sequenceSend: _sequence(update.sequenceSend),
   );
 
   UiState withEvent(rust.Event event) => withEvents([event]);
@@ -349,6 +380,17 @@ class UiState {
     trimmedRecords: trimmedRecords ?? this.trimmedRecords,
     logIncomplete: logIncomplete ?? this.logIncomplete,
     dataGap: dataGap ?? this.dataGap,
+    dtr: dtr,
+    rts: rts,
+    sequenceSend: sequenceSend,
+  );
+
+  static UiSequenceSend _sequence(rust.SequenceSendState value) => (
+    enabled: value.enabled,
+    intervalMs: value.intervalMs,
+    nextIndex: value.nextIndex,
+    itemCount: value.itemCount,
+    error: value.error,
   );
 
   static LogChunk _chunk(rust.LogRecord record) {

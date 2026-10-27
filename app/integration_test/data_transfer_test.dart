@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../test/helpers/test_app.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skyport/host_core.dart';
 import 'package:skyport/main.dart';
@@ -17,7 +19,7 @@ import 'package:skyport/providers/theme_provider.dart';
 import 'package:skyport/src/rust/api.dart' as rust;
 import 'package:skyport/src/rust/frb_generated.dart';
 import 'package:skyport/utils/error_messages.dart';
-import 'package:skyport/widgets/connection_rail.dart';
+import 'package:skyport/widgets/nav_rail.dart';
 import 'package:skyport/widgets/right_panel/send_input_widget.dart';
 import 'package:skyport/widgets/application_settings.dart';
 import 'package:skyport/widgets/left_panel/send_settings_widget.dart';
@@ -55,7 +57,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final l10n = AppLocalizations.of(tester.element(find.byType(HomePage)));
-      await tester.tap(find.byTooltip(l10n.settingsPageLabel));
+      await tester.tap(findTooltip(l10n.settingsPageLabel));
       await tester.pumpAndSettle();
       final reconnect = find.byKey(const ValueKey('auto-reconnect-switch'));
       for (final enabled in [true, false]) {
@@ -120,10 +122,7 @@ void main() {
         ),
       );
       final l10n = AppLocalizations.of(tester.element(find.byType(HomePage)));
-      final power = find.descendant(
-        of: find.byType(StatusBar),
-        matching: find.byType(IconButton),
-      );
+      final power = find.byKey(const ValueKey('status-connection-toggle'));
       await tester.tap(power);
       await _until(
         tester,
@@ -138,7 +137,7 @@ void main() {
       );
       await tester.enterText(input, 'PTY');
       await tester.pump();
-      await tester.tap(find.byIcon(Icons.send));
+      await tester.tap(find.byIcon(LucideIcons.send));
       await _until(
         tester,
         () => container!.read(uiControllerProvider).rxBytes == 5,
@@ -181,11 +180,11 @@ void main() {
       await tester.pump();
       final inputController = tester.widget<TextField>(input).controller!;
       expect(inputController.text, draft);
-      await tester.tap(find.byTooltip(l10n.settingsPageLabel));
+      await tester.tap(findTooltip(l10n.settingsPageLabel));
       await tester.pumpAndSettle();
       final capacityInput = find.descendant(
         of: find.byType(ApplicationSettings),
-        matching: find.byType(TextFormField),
+        matching: find.byType(EditableText),
       );
       await tester.ensureVisible(capacityInput);
       await tester.enterText(capacityInput, '256');
@@ -205,7 +204,7 @@ void main() {
         return File(exportPath).readAsBytes();
       });
       final exportedBefore = exportBefore!;
-      final capacity = tester.widget<TextFormField>(capacityInput).controller!;
+      final capacity = tester.widget<EditableText>(capacityInput).controller;
       final expectedLogCapacity = state.logCapacityBytes;
       expect(expectedLogCapacity, 128 * 1024 * 1024);
       expect(capacity.text, '256');
@@ -290,7 +289,7 @@ void main() {
       expect(state.sendHistory.last, '00 ff A5 0a');
       await tester.tap(
         find.descendant(
-          of: find.byType(ConnectionRail),
+          of: find.byType(NavRail),
           matching: find.text(l10n.serialPageLabel),
         ),
       );
@@ -298,7 +297,7 @@ void main() {
       if (find.byType(SerialParamsWidget).hitTestable().evaluate().isEmpty) {
         await tester.tap(
           find.descendant(
-            of: find.byType(ConnectionRail),
+            of: find.byType(NavRail),
             matching: find.text(l10n.serialPageLabel),
           ),
         );
@@ -308,7 +307,7 @@ void main() {
       // Exercise every driver mode through the real UI and bridge.
       final flowMenu = find.descendant(
         of: find.byType(SerialParamsWidget),
-        matching: find.byType(DropdownMenu<UiFlowControl>),
+        matching: find.byType(ShadSelect<UiFlowControl>),
       );
       for (final (uiMode, coreMode) in [
         (UiFlowControl.hardware, rust.FlowControl.hardware),
@@ -316,9 +315,7 @@ void main() {
         (UiFlowControl.none, rust.FlowControl.none),
       ]) {
         await tester.ensureVisible(flowMenu);
-        await tester.tap(
-          find.descendant(of: flowMenu, matching: find.byType(EditableText)),
-        );
+        await tester.tap(flowMenu);
         await tester.pumpAndSettle();
         final currentLocalizations = AppLocalizations.of(
           tester.element(find.byType(HomePage)),
@@ -328,7 +325,7 @@ void main() {
           UiFlowControl.hardware => currentLocalizations.flowControlHardware,
           UiFlowControl.software => currentLocalizations.flowControlSoftware,
         };
-        await tester.tap(find.widgetWithText(MenuItemButton, label));
+        await tester.tap(find.widgetWithText(ShadOption<UiFlowControl>, label));
         await _until(
           tester,
           () =>
@@ -345,7 +342,7 @@ void main() {
       final hexSwitch = find
           .descendant(
             of: find.byType(SendSettingsWidget),
-            matching: find.byType(Switch),
+            matching: find.byType(ShadSwitch),
           )
           .first;
       await tester.ensureVisible(hexSwitch);
@@ -353,7 +350,7 @@ void main() {
       await _until(tester, () => container!.read(uiControllerProvider).hexSend);
       await tester.enterText(input, '41 42');
       await tester.pump();
-      await tester.tap(find.byIcon(Icons.send));
+      await tester.tap(find.byIcon(LucideIcons.send));
       await _until(
         tester,
         () => container!.read(uiControllerProvider).txBytes == 11,
@@ -365,7 +362,7 @@ void main() {
         () => !container!.read(uiControllerProvider).hexSend,
       );
       expect(tester.widget<TextField>(input).controller!.text, 'AB');
-      await tester.tap(find.byIcon(Icons.send));
+      await tester.tap(find.byIcon(LucideIcons.send));
       await _until(
         tester,
         () => container!.read(uiControllerProvider).txBytes == 15,
@@ -438,7 +435,7 @@ void main() {
       });
       expect(container.read(uiControllerProvider).txBytes, 15);
       expect(container.read(uiControllerProvider).rxBytes, 5);
-      await tester.tap(find.byTooltip(l10n.clearReceiveArea));
+      await tester.tap(findTooltip(l10n.clearReceiveArea));
       await _until(
         tester,
         () =>
@@ -461,28 +458,18 @@ void main() {
           tester.element(find.byType(HomePage)),
         );
         expect(
-          tester
-              .widget<EditableText>(
-                find.descendant(
-                  of: find.byType(DropdownMenu<UiFlowControl>),
-                  matching: find.byType(EditableText),
-                ),
-              )
-              .controller
-              .text,
-          localizedStrings.flowControlNone,
+          find.descendant(
+            of: find.byType(ShadSelect<UiFlowControl>),
+            matching: find.text(localizedStrings.flowControlNone),
+          ),
+          findsOneWidget,
         );
         expect(
-          tester
-              .widget<EditableText>(
-                find.descendant(
-                  of: find.byType(DropdownMenu<UiParity>),
-                  matching: find.byType(EditableText),
-                ),
-              )
-              .controller
-              .text,
-          localizedStrings.parityNone,
+          find.descendant(
+            of: find.byType(ShadSelect<UiParity>),
+            matching: find.text(localizedStrings.parityNone),
+          ),
+          findsOneWidget,
         );
         for (final (uiMode, coreMode) in [
           (UiFlowControl.hardware, rust.FlowControl.hardware),
@@ -495,7 +482,7 @@ void main() {
             );
             await tester.tap(
               find.descendant(
-                of: find.byType(ConnectionRail),
+                of: find.byType(NavRail),
                 matching: find.text(strings.serialPageLabel),
               ),
             );
@@ -505,21 +492,18 @@ void main() {
             tester.element(find.byType(HomePage)),
           );
           expect(strings.localeName, language);
-          final restoredMenu = find.byType(DropdownMenu<UiFlowControl>);
+          final restoredMenu = find.byType(ShadSelect<UiFlowControl>);
           await tester.ensureVisible(restoredMenu);
-          await tester.tap(
-            find.descendant(
-              of: restoredMenu,
-              matching: find.byType(EditableText),
-            ),
-          );
+          await tester.tap(restoredMenu);
           await tester.pumpAndSettle();
           final selection = switch (uiMode) {
             UiFlowControl.none => strings.flowControlNone,
             UiFlowControl.hardware => strings.flowControlHardware,
             UiFlowControl.software => strings.flowControlSoftware,
           };
-          await tester.tap(find.widgetWithText(MenuItemButton, selection));
+          await tester.tap(
+            find.widgetWithText(ShadOption<UiFlowControl>, selection),
+          );
           await _until(
             tester,
             () => container!.read(uiControllerProvider).flowControl == uiMode,
@@ -565,9 +549,7 @@ void main() {
           await tester.pumpAndSettle();
           expect(container.read(uiControllerProvider).flowControl, uiMode);
           expect(
-            tester
-                .widget<DropdownMenu<UiFlowControl>>(restoredMenu)
-                .initialSelection,
+            tester.widget<ShadSelect<UiFlowControl>>(restoredMenu).initialValue,
             uiMode,
           );
           await tester.runAsync(
@@ -597,10 +579,8 @@ void main() {
       final strings = AppLocalizations.of(
         tester.element(find.byType(HomePage)),
       );
-      if (tester
-          .widget<ConnectionRail>(find.byType(ConnectionRail))
-          .panelOpen) {
-        await tester.tap(find.byTooltip(strings.serialPageLabel));
+      if (tester.widget<NavRail>(find.byType(NavRail)).panelOpen) {
+        await tester.tap(findTooltip(strings.serialPageLabel));
         await tester.pumpAndSettle();
       }
       final retrySubscription = (await tester.runAsync(

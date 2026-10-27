@@ -470,4 +470,168 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorUnexpected =>
       'An unexpected error occurred. See diagnostic details.';
+
+  @override
+  String get scrollToBottom => 'Scroll to latest';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get toolsPageLabel => 'Tools';
+
+  @override
+  String get toolChecksum => 'Checksum';
+
+  @override
+  String get toolInputFormat => 'Input format';
+
+  @override
+  String get toolInputTextUtf8 => 'Text (UTF-8)';
+
+  @override
+  String toolByteCount(int count) {
+    return '$count bytes';
+  }
+
+  @override
+  String get toolChecksumNote =>
+      'Values are shown big-endian and are never added to sent data.';
+
+  @override
+  String get toolHexText => 'Hex and text';
+
+  @override
+  String get toolTextToHex => 'Text → Hex';
+
+  @override
+  String get toolHexToText => 'Hex → Text';
+
+  @override
+  String get toolNumberBase => 'Number base';
+
+  @override
+  String get toolInvalidNumber => 'Not a valid number in this base';
+
+  @override
+  String get copy => 'Copy';
+
+  @override
+  String get copied => 'Copied to clipboard';
+
+  @override
+  String get quickCommandsPageLabel => 'Commands';
+
+  @override
+  String get quickCommandAdd => 'Add command';
+
+  @override
+  String get quickCommandEdit => 'Edit command';
+
+  @override
+  String get quickCommandName => 'Name';
+
+  @override
+  String get quickCommandNameHint => 'Defaults to the content';
+
+  @override
+  String get quickCommandPayload => 'Content';
+
+  @override
+  String get quickCommandPayloadRequired => 'Enter content to send';
+
+  @override
+  String get quickCommandsEmpty =>
+      'No saved commands yet. Add the commands you use often to send them with one click.';
+
+  @override
+  String get quickCommandNotConnected => 'Connect a port to send';
+
+  @override
+  String get quickCommandListFull => 'The command list is full.';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get receiveTab => 'Receive';
+
+  @override
+  String get chartTab => 'Chart';
+
+  @override
+  String get chartEmpty =>
+      'Received lines of numbers are plotted here, e.g. \"12.5,30\" or \"temp:23.5 hum:41\". One series per column.';
+
+  @override
+  String get chartPausedEmpty => 'Plotting is paused.';
+
+  @override
+  String get chartPause => 'Pause plotting';
+
+  @override
+  String get chartResume => 'Resume plotting';
+
+  @override
+  String get chartClear => 'Clear chart';
+
+  @override
+  String chartSkipped(int count) {
+    return '$count non-numeric lines';
+  }
+
+  @override
+  String get chartSkippedHint =>
+      'Lines that are not purely numeric are skipped and not plotted.';
+
+  @override
+  String get errorModemLineUnavailable =>
+      'RTS is controlled by hardware flow control.';
+
+  @override
+  String get errorSendScheduleConflict =>
+      'Auto-send and command loop cannot run at the same time.';
+
+  @override
+  String get errorSequenceTooLong => 'Too many commands in the loop.';
+
+  @override
+  String get modemLines => 'Control lines';
+
+  @override
+  String get modemLinesHint =>
+      'Applied to the open port. Both lines are released when the port opens or closes.';
+
+  @override
+  String get modemLinesHardwareFlow =>
+      'RTS is controlled by hardware flow control';
+
+  @override
+  String get sequenceLoop => 'Loop all';
+
+  @override
+  String get sequenceLoopHint =>
+      'Send every command in order, repeating, one per interval. Stops on a write failure.';
+
+  @override
+  String sequenceRunning(int current, int total) {
+    return 'Sending $current/$total';
+  }
+
+  @override
+  String sequenceStopped(String message) {
+    return 'Loop stopped: $message';
+  }
+
+  @override
+  String get sequenceStart => 'Start loop';
+
+  @override
+  String get sequenceStop => 'Stop loop';
 }

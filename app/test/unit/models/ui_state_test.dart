@@ -98,6 +98,13 @@ rust.Event stateChanged(
     lastRxBytes: 0,
     rxBytesPerSecond: 0,
     autoSendInput: '',
+    modemLines: rust.ModemLines(dtr: false, rts: false),
+    sequenceSend: rust.SequenceSendState(
+      enabled: false,
+      intervalMs: 0,
+      nextIndex: 0,
+      itemCount: 0,
+    ),
     error: error,
   ),
 );
@@ -434,6 +441,13 @@ void main() {
             incomplete: true,
           ),
           autoSendInput: '41',
+          modemLines: rust.ModemLines(dtr: false, rts: false),
+          sequenceSend: rust.SequenceSendState(
+            enabled: false,
+            intervalMs: 0,
+            nextIndex: 0,
+            itemCount: 0,
+          ),
         ),
         dataGap: true,
       );
@@ -451,6 +465,13 @@ void main() {
             lastRxBytes: 2,
             rxBytesPerSecond: 0,
             autoSendInput: '41',
+            modemLines: rust.ModemLines(dtr: false, rts: false),
+            sequenceSend: rust.SequenceSendState(
+              enabled: false,
+              intervalMs: 0,
+              nextIndex: 0,
+              itemCount: 0,
+            ),
           ),
         ),
       );

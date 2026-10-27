@@ -447,4 +447,160 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errorUnexpected => '发生意外错误，请查看诊断详情。';
+
+  @override
+  String get scrollToBottom => '滚动到最新';
+
+  @override
+  String get cancel => '取消';
+
+  @override
+  String get language => '语言';
+
+  @override
+  String get toolsPageLabel => '工具';
+
+  @override
+  String get toolChecksum => '校验计算';
+
+  @override
+  String get toolInputFormat => '输入格式';
+
+  @override
+  String get toolInputTextUtf8 => '文本 (UTF-8)';
+
+  @override
+  String toolByteCount(int count) {
+    return '$count 字节';
+  }
+
+  @override
+  String get toolChecksumNote => '结果按大端显示，不会自动附加到发送数据。';
+
+  @override
+  String get toolHexText => 'Hex 与文本互转';
+
+  @override
+  String get toolTextToHex => '文本 → Hex';
+
+  @override
+  String get toolHexToText => 'Hex → 文本';
+
+  @override
+  String get toolNumberBase => '进制转换';
+
+  @override
+  String get toolInvalidNumber => '不是该进制下的有效数字';
+
+  @override
+  String get copy => '复制';
+
+  @override
+  String get copied => '已复制到剪贴板';
+
+  @override
+  String get quickCommandsPageLabel => '指令';
+
+  @override
+  String get quickCommandAdd => '添加指令';
+
+  @override
+  String get quickCommandEdit => '编辑指令';
+
+  @override
+  String get quickCommandName => '名称';
+
+  @override
+  String get quickCommandNameHint => '留空则使用内容';
+
+  @override
+  String get quickCommandPayload => '内容';
+
+  @override
+  String get quickCommandPayloadRequired => '请输入要发送的内容';
+
+  @override
+  String get quickCommandsEmpty => '还没有保存的指令。添加常用指令后可一键发送。';
+
+  @override
+  String get quickCommandNotConnected => '连接串口后才能发送';
+
+  @override
+  String get quickCommandListFull => '指令列表已满。';
+
+  @override
+  String get delete => '删除';
+
+  @override
+  String get save => '保存';
+
+  @override
+  String get receiveTab => '接收';
+
+  @override
+  String get chartTab => '曲线';
+
+  @override
+  String get chartEmpty =>
+      '接收到的数值行会绘制在这里，例如 \"12.5,30\" 或 \"temp:23.5 hum:41\"。每一列是一条曲线。';
+
+  @override
+  String get chartPausedEmpty => '绘图已暂停。';
+
+  @override
+  String get chartPause => '暂停绘图';
+
+  @override
+  String get chartResume => '继续绘图';
+
+  @override
+  String get chartClear => '清空曲线';
+
+  @override
+  String chartSkipped(int count) {
+    return '$count 行非数值';
+  }
+
+  @override
+  String get chartSkippedHint => '不是纯数值的行会被跳过，不绘制。';
+
+  @override
+  String get errorModemLineUnavailable => '已启用硬件流控，RTS 由流控自动控制。';
+
+  @override
+  String get errorSendScheduleConflict => '自动发送和指令循环发送不能同时运行。';
+
+  @override
+  String get errorSequenceTooLong => '循环发送的指令过多。';
+
+  @override
+  String get modemLines => '控制线';
+
+  @override
+  String get modemLinesHint => '作用于已打开的串口。串口打开或关闭时两条线都会复位为无效。';
+
+  @override
+  String get modemLinesHardwareFlow => '已启用硬件流控，RTS 由流控控制';
+
+  @override
+  String get sequenceLoop => '循环发送';
+
+  @override
+  String get sequenceLoopHint => '按顺序循环发送所有指令，每个间隔发送一条。写入失败时停止。';
+
+  @override
+  String sequenceRunning(int current, int total) {
+    return '正在发送 $current/$total';
+  }
+
+  @override
+  String sequenceStopped(String message) {
+    return '循环已停止：$message';
+  }
+
+  @override
+  String get sequenceStart => '开始循环';
+
+  @override
+  String get sequenceStop => '停止循环';
 }
