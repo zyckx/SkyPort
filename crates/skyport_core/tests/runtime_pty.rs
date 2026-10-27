@@ -2,7 +2,7 @@
 
 use skyport_core::{
     AppCore, AppOptions, Command, ConfigPatch, ConnectionState, ErrorCode, ErrorKind, EventKind,
-    FlowControl, LegacyConfig, Newline,
+    FlowControl, LegacyConfig, ModemLines, Newline, SequenceItem, SequenceSendState,
 };
 use std::{
     ffi::CStr,
@@ -926,4 +926,179 @@ fn close_finishes_every_accepted_send_with_one_correlated_outcome() {
         }
     }
     assert_eq!(finished, accepted);
+}
+
+fn command_outcome(
+    events: &skyport_core::EventSubscription,
+    request: skyport_core::RequestId,
+) -> Result<(), skyport_core::CoreError> {
+    let deadline = Instant::now() + Duration::from_secs(4);
+    loop {
+        assert!(Instant::now() < deadline, "command outcome timed out");
+        if let Some(event) = events.recv_timeout(Duration::from_millis(50)).unwrap() {
+            match event.kind {
+                EventKind::CommandCompleted { request_id } if request_id == request => {
+                    return Ok(());
+                }
+                EventKind::CommandFailed { request_id, error } if request_id == request => {
+                    return Err(error);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+#[test]
+fn modem_lines_require_a_port_report_failures_and_reset_with_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let pty = Pty::new();
+    let core = AppCore::create(options(
+        dir.path().into(),
+        pty.slave.to_string_lossy().into_owned(),
+    ))
+    .unwrap();
+    let (_, events) = core.subscribe().unwrap();
+    let both = Command::SetModemLines {
+        dtr: Some(true),
+        rts: Some(true),
+    };
+
+    let request = core.dispatch(both.clone()).unwrap();
+    let error = command_outcome(&events, request).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Disconnected);
+    assert_eq!(core.snapshot().unwrap().modem_lines, ModemLines::default());
+
+    core.dispatch(Command::Connect).unwrap();
+    wait_for(|| core.snapshot().unwrap().connection == ConnectionState::Connected);
+    assert_eq!(core.snapshot().unwrap().modem_lines, ModemLines::default());
+
+    // PTYs may reject modem ioctls. Either way the state must match what the
+    // driver accepted: no silent success and no hidden retry.
+    let request = core.dispatch(both).unwrap();
+    match command_outcome(&events, request) {
+        Ok(()) => {
+            let lines = core.snapshot().unwrap().modem_lines;
+            assert_eq!(
+                lines,
+                ModemLines {
+                    dtr: true,
+                    rts: true
+                }
+            );
+        }
+        Err(error) => {
+            assert_eq!(error.kind, ErrorKind::WriteFailed, "{error:?}");
+            assert!(!core.snapshot().unwrap().modem_lines.rts);
+        }
+    }
+
+    core.dispatch(Command::Disconnect).unwrap();
+    wait_for(|| core.snapshot().unwrap().connection == ConnectionState::Disconnected);
+    assert_eq!(core.snapshot().unwrap().modem_lines, ModemLines::default());
+
+    let mut config = core.snapshot().unwrap().config;
+    config.serial.flow_control = FlowControl::Hardware;
+    core.dispatch(Command::SetConfig(config)).unwrap();
+    core.dispatch(Command::Connect).unwrap();
+    wait_for(|| {
+        core.snapshot()
+            .unwrap()
+            .applied_config
+            .is_some_and(|config| config.flow_control == FlowControl::Hardware)
+    });
+    let request = core
+        .dispatch(Command::SetModemLines {
+            dtr: None,
+            rts: Some(true),
+        })
+        .unwrap();
+    let error = command_outcome(&events, request).unwrap_err();
+    assert_eq!(error.code, Some(ErrorCode::ModemLineUnavailable));
+    assert_eq!(core.snapshot().unwrap().modem_lines, ModemLines::default());
+    core.close().unwrap();
+}
+
+#[test]
+fn sequence_send_loops_in_order_and_excludes_auto_send() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut pty = Pty::new();
+    let core = AppCore::create(options(
+        dir.path().into(),
+        pty.slave.to_string_lossy().into_owned(),
+    ))
+    .unwrap();
+    let (_, events) = core.subscribe().unwrap();
+    let items = vec![
+        SequenceItem {
+            input: "A".into(),
+            hex: false,
+            newline: Newline::Lf,
+        },
+        SequenceItem {
+            input: "42".into(),
+            hex: true,
+            newline: Newline::CrLf,
+        },
+    ];
+
+    // Invalid items are rejected before anything is scheduled.
+    let error = core
+        .dispatch(Command::SetSequenceSend {
+            enabled: true,
+            interval_ms: 20,
+            items: vec![SequenceItem {
+                input: "4".into(),
+                hex: true,
+                newline: Newline::None,
+            }],
+        })
+        .unwrap_err();
+    assert_eq!(error.code, Some(ErrorCode::IncompleteHexByte));
+    assert!(!core.snapshot().unwrap().sequence_send.enabled);
+
+    core.dispatch(Command::Connect).unwrap();
+    wait_for(|| core.snapshot().unwrap().connection == ConnectionState::Connected);
+    let request = core
+        .dispatch(Command::SetSequenceSend {
+            enabled: true,
+            interval_ms: 20,
+            items: items.clone(),
+        })
+        .unwrap();
+    command_outcome(&events, request).unwrap();
+    // Hex items ignore the newline; text items get exactly theirs.
+    wait_for(|| pty.contains_bytes(b"A\nBA\nB"));
+    let state = core.snapshot().unwrap().sequence_send;
+    assert!(state.enabled);
+    assert_eq!(state.item_count, 2);
+
+    let request = core
+        .dispatch(Command::UpdateConfig(ConfigPatch {
+            auto_send_enabled: Some(true),
+            auto_send_input: Some("x".into()),
+            ..ConfigPatch::default()
+        }))
+        .unwrap();
+    let error = command_outcome(&events, request).unwrap_err();
+    assert_eq!(error.code, Some(ErrorCode::SendScheduleConflict));
+    assert!(!core.snapshot().unwrap().config.send.auto_send_enabled);
+
+    let request = core
+        .dispatch(Command::SetSequenceSend {
+            enabled: false,
+            interval_ms: 20,
+            items: Vec::new(),
+        })
+        .unwrap();
+    command_outcome(&events, request).unwrap();
+    assert_eq!(
+        core.snapshot().unwrap().sequence_send,
+        SequenceSendState::default()
+    );
+    thread::sleep(Duration::from_millis(60));
+    pty.observed.clear();
+    thread::sleep(Duration::from_millis(80));
+    assert!(!pty.contains_bytes(b"A"), "stopped sequence kept sending");
+    core.close().unwrap();
 }

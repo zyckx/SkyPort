@@ -166,6 +166,9 @@ pub enum ErrorCode {
     NoLogsToExport,
     ExportFailed,
     QueueCapacityInvalid,
+    ModemLineUnavailable,
+    SendScheduleConflict,
+    SequenceTooLong,
 }
 #[derive(Clone, Debug)]
 pub struct CoreError {
@@ -184,6 +187,25 @@ pub enum ConnectionState {
     Reconnecting,
     Closing,
     Closed,
+}
+#[derive(Clone, Copy, Debug)]
+pub struct ModemLines {
+    pub dtr: bool,
+    pub rts: bool,
+}
+#[derive(Clone, Debug)]
+pub struct SequenceItem {
+    pub input: String,
+    pub hex: bool,
+    pub newline: Newline,
+}
+#[derive(Clone, Debug)]
+pub struct SequenceSendState {
+    pub enabled: bool,
+    pub interval_ms: u32,
+    pub next_index: u32,
+    pub item_count: u32,
+    pub error: Option<CoreError>,
 }
 #[derive(Clone, Copy, Debug)]
 pub enum Direction {
@@ -232,6 +254,8 @@ pub struct AppSnapshot {
     pub auto_send_error: Option<CoreError>,
     pub log: LogSnapshot,
     pub auto_send_input: String,
+    pub modem_lines: ModemLines,
+    pub sequence_send: SequenceSendState,
 }
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -248,6 +272,8 @@ pub struct AppState {
     pub error: Option<CoreError>,
     pub auto_send_error: Option<CoreError>,
     pub auto_send_input: String,
+    pub modem_lines: ModemLines,
+    pub sequence_send: SequenceSendState,
 }
 #[derive(Clone, Copy, Debug)]
 pub struct ExportOptions {
@@ -350,6 +376,9 @@ impl From<core::ErrorCode> for ErrorCode {
             core::ErrorCode::NoLogsToExport => Self::NoLogsToExport,
             core::ErrorCode::ExportFailed => Self::ExportFailed,
             core::ErrorCode::QueueCapacityInvalid => Self::QueueCapacityInvalid,
+            core::ErrorCode::ModemLineUnavailable => Self::ModemLineUnavailable,
+            core::ErrorCode::SendScheduleConflict => Self::SendScheduleConflict,
+            core::ErrorCode::SequenceTooLong => Self::SequenceTooLong,
         }
     }
 }
@@ -562,6 +591,8 @@ impl From<core::AppSnapshot> for AppSnapshot {
             auto_send_error: value.auto_send_error.map(Into::into),
             log: value.log.into(),
             auto_send_input: value.auto_send_input,
+            modem_lines: value.modem_lines.into(),
+            sequence_send: value.sequence_send.into(),
         }
     }
 }
@@ -581,6 +612,36 @@ impl From<core::AppState> for AppState {
             error: value.error.map(Into::into),
             auto_send_error: value.auto_send_error.map(Into::into),
             auto_send_input: value.auto_send_input,
+            modem_lines: value.modem_lines.into(),
+            sequence_send: value.sequence_send.into(),
+        }
+    }
+}
+impl From<core::SequenceSendState> for SequenceSendState {
+    fn from(value: core::SequenceSendState) -> Self {
+        Self {
+            enabled: value.enabled,
+            interval_ms: value.interval_ms,
+            next_index: value.next_index,
+            item_count: value.item_count,
+            error: value.error.map(Into::into),
+        }
+    }
+}
+impl From<SequenceItem> for core::SequenceItem {
+    fn from(value: SequenceItem) -> Self {
+        Self {
+            input: value.input,
+            hex: value.hex,
+            newline: value.newline.into(),
+        }
+    }
+}
+impl From<core::ModemLines> for ModemLines {
+    fn from(value: core::ModemLines) -> Self {
+        Self {
+            dtr: value.dtr,
+            rts: value.rts,
         }
     }
 }
@@ -799,6 +860,27 @@ pub fn clear_log(handle: &CoreHandle) -> DispatchReply {
 }
 pub fn set_auto_reconnect(handle: &CoreHandle, enabled: bool) -> DispatchReply {
     dispatch(handle, core::Command::SetAutoReconnect(enabled))
+}
+/// Sets DTR and/or RTS on the open port; `None` leaves a line unchanged.
+pub fn set_modem_lines(handle: &CoreHandle, dtr: Option<bool>, rts: Option<bool>) -> DispatchReply {
+    dispatch(handle, core::Command::SetModemLines { dtr, rts })
+}
+/// Starts or stops looping through `items`; the core encodes and validates
+/// every item before accepting the request.
+pub fn set_sequence_send(
+    handle: &CoreHandle,
+    enabled: bool,
+    interval_ms: u32,
+    items: Vec<SequenceItem>,
+) -> DispatchReply {
+    dispatch(
+        handle,
+        core::Command::SetSequenceSend {
+            enabled,
+            interval_ms,
+            items: items.into_iter().map(Into::into).collect(),
+        },
+    )
 }
 pub fn set_auto_send(
     handle: &CoreHandle,

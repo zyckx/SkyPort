@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -374635432;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1042890326;
 
 // Section: executor
 
@@ -874,6 +874,122 @@ fn wire__crate__api__set_config_impl(
         },
     )
 }
+fn wire__crate__api__set_modem_lines_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_modem_lines",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CoreHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_dtr = <Option<bool>>::sse_decode(&mut deserializer);
+            let api_rts = <Option<bool>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let mut api_handle_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_handle,
+                                0,
+                                false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_handle_guard = api_handle_guard.unwrap();
+                    let output_ok = Ok::<_, ()>(crate::api::set_modem_lines(
+                        &*api_handle_guard,
+                        api_dtr,
+                        api_rts,
+                    ))?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__set_sequence_send_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_sequence_send",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CoreHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_enabled = <bool>::sse_decode(&mut deserializer);
+            let api_interval_ms = <u32>::sse_decode(&mut deserializer);
+            let api_items = <Vec<crate::api::SequenceItem>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let mut api_handle_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_handle,
+                                0,
+                                false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_handle_guard = api_handle_guard.unwrap();
+                    let output_ok = Ok::<_, ()>(crate::api::set_sequence_send(
+                        &*api_handle_guard,
+                        api_enabled,
+                        api_interval_ms,
+                        api_items,
+                    ))?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__snapshot_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1124,6 +1240,8 @@ impl SseDecode for crate::api::AppSnapshot {
         let mut var_autoSendError = <Option<crate::api::CoreError>>::sse_decode(deserializer);
         let mut var_log = <crate::api::LogSnapshot>::sse_decode(deserializer);
         let mut var_autoSendInput = <String>::sse_decode(deserializer);
+        let mut var_modemLines = <crate::api::ModemLines>::sse_decode(deserializer);
+        let mut var_sequenceSend = <crate::api::SequenceSendState>::sse_decode(deserializer);
         return crate::api::AppSnapshot {
             sequence: var_sequence,
             config: var_config,
@@ -1139,6 +1257,8 @@ impl SseDecode for crate::api::AppSnapshot {
             auto_send_error: var_autoSendError,
             log: var_log,
             auto_send_input: var_autoSendInput,
+            modem_lines: var_modemLines,
+            sequence_send: var_sequenceSend,
         };
     }
 }
@@ -1159,6 +1279,8 @@ impl SseDecode for crate::api::AppState {
         let mut var_error = <Option<crate::api::CoreError>>::sse_decode(deserializer);
         let mut var_autoSendError = <Option<crate::api::CoreError>>::sse_decode(deserializer);
         let mut var_autoSendInput = <String>::sse_decode(deserializer);
+        let mut var_modemLines = <crate::api::ModemLines>::sse_decode(deserializer);
+        let mut var_sequenceSend = <crate::api::SequenceSendState>::sse_decode(deserializer);
         return crate::api::AppState {
             sequence: var_sequence,
             config: var_config,
@@ -1173,6 +1295,8 @@ impl SseDecode for crate::api::AppState {
             error: var_error,
             auto_send_error: var_autoSendError,
             auto_send_input: var_autoSendInput,
+            modem_lines: var_modemLines,
+            sequence_send: var_sequenceSend,
         };
     }
 }
@@ -1329,6 +1453,9 @@ impl SseDecode for crate::api::ErrorCode {
             23 => crate::api::ErrorCode::NoLogsToExport,
             24 => crate::api::ErrorCode::ExportFailed,
             25 => crate::api::ErrorCode::QueueCapacityInvalid,
+            26 => crate::api::ErrorCode::ModemLineUnavailable,
+            27 => crate::api::ErrorCode::SendScheduleConflict,
+            28 => crate::api::ErrorCode::SequenceTooLong,
             _ => unreachable!("Invalid variant for ErrorCode: {}", inner),
         };
     }
@@ -1565,6 +1692,18 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Vec<crate::api::SequenceItem> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::SequenceItem>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for crate::api::LogDelta {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1619,6 +1758,18 @@ impl SseDecode for crate::api::LogSnapshot {
             trimmed_bytes: var_trimmedBytes,
             trimmed_records: var_trimmedRecords,
             incomplete: var_incomplete,
+        };
+    }
+}
+
+impl SseDecode for crate::api::ModemLines {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_dtr = <bool>::sse_decode(deserializer);
+        let mut var_rts = <bool>::sse_decode(deserializer);
+        return crate::api::ModemLines {
+            dtr: var_dtr,
+            rts: var_rts,
         };
     }
 }
@@ -1888,6 +2039,38 @@ impl SseDecode for crate::api::SendSettings {
     }
 }
 
+impl SseDecode for crate::api::SequenceItem {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_input = <String>::sse_decode(deserializer);
+        let mut var_hex = <bool>::sse_decode(deserializer);
+        let mut var_newline = <crate::api::Newline>::sse_decode(deserializer);
+        return crate::api::SequenceItem {
+            input: var_input,
+            hex: var_hex,
+            newline: var_newline,
+        };
+    }
+}
+
+impl SseDecode for crate::api::SequenceSendState {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_enabled = <bool>::sse_decode(deserializer);
+        let mut var_intervalMs = <u32>::sse_decode(deserializer);
+        let mut var_nextIndex = <u32>::sse_decode(deserializer);
+        let mut var_itemCount = <u32>::sse_decode(deserializer);
+        let mut var_error = <Option<crate::api::CoreError>>::sse_decode(deserializer);
+        return crate::api::SequenceSendState {
+            enabled: var_enabled,
+            interval_ms: var_intervalMs,
+            next_index: var_nextIndex,
+            item_count: var_itemCount,
+            error: var_error,
+        };
+    }
+}
+
 impl SseDecode for crate::api::SerialConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1994,9 +2177,11 @@ fn pde_ffi_dispatcher_primary_impl(
         14 => wire__crate__api__set_auto_reconnect_impl(port, ptr, rust_vec_len, data_len),
         15 => wire__crate__api__set_auto_send_impl(port, ptr, rust_vec_len, data_len),
         16 => wire__crate__api__set_config_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__snapshot_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__subscribe_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__update_config_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__set_modem_lines_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__set_sequence_send_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__snapshot_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__subscribe_impl(port, ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__update_config_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2085,6 +2270,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::AppSnapshot {
             self.auto_send_error.into_into_dart().into_dart(),
             self.log.into_into_dart().into_dart(),
             self.auto_send_input.into_into_dart().into_dart(),
+            self.modem_lines.into_into_dart().into_dart(),
+            self.sequence_send.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2112,6 +2299,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::AppState {
             self.error.into_into_dart().into_dart(),
             self.auto_send_error.into_into_dart().into_dart(),
             self.auto_send_input.into_into_dart().into_dart(),
+            self.modem_lines.into_into_dart().into_dart(),
+            self.sequence_send.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2284,6 +2473,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::ErrorCode {
             Self::NoLogsToExport => 23.into_dart(),
             Self::ExportFailed => 24.into_dart(),
             Self::QueueCapacityInvalid => 25.into_dart(),
+            Self::ModemLineUnavailable => 26.into_dart(),
+            Self::SendScheduleConflict => 27.into_dart(),
+            Self::SequenceTooLong => 28.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -2510,6 +2702,22 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::LogSnapshot> for crate::api::
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::ModemLines {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.dtr.into_into_dart().into_dart(),
+            self.rts.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::ModemLines {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::ModemLines> for crate::api::ModemLines {
+    fn into_into_dart(self) -> crate::api::ModemLines {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::Newline {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
@@ -2560,6 +2768,44 @@ impl flutter_rust_bridge::IntoDart for crate::api::SendSettings {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::SendSettings {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::SendSettings> for crate::api::SendSettings {
     fn into_into_dart(self) -> crate::api::SendSettings {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::SequenceItem {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.input.into_into_dart().into_dart(),
+            self.hex.into_into_dart().into_dart(),
+            self.newline.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::SequenceItem {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::SequenceItem> for crate::api::SequenceItem {
+    fn into_into_dart(self) -> crate::api::SequenceItem {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::SequenceSendState {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.enabled.into_into_dart().into_dart(),
+            self.interval_ms.into_into_dart().into_dart(),
+            self.next_index.into_into_dart().into_dart(),
+            self.item_count.into_into_dart().into_dart(),
+            self.error.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::SequenceSendState {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::SequenceSendState>
+    for crate::api::SequenceSendState
+{
+    fn into_into_dart(self) -> crate::api::SequenceSendState {
         self
     }
 }
@@ -2689,6 +2935,8 @@ impl SseEncode for crate::api::AppSnapshot {
         <Option<crate::api::CoreError>>::sse_encode(self.auto_send_error, serializer);
         <crate::api::LogSnapshot>::sse_encode(self.log, serializer);
         <String>::sse_encode(self.auto_send_input, serializer);
+        <crate::api::ModemLines>::sse_encode(self.modem_lines, serializer);
+        <crate::api::SequenceSendState>::sse_encode(self.sequence_send, serializer);
     }
 }
 
@@ -2708,6 +2956,8 @@ impl SseEncode for crate::api::AppState {
         <Option<crate::api::CoreError>>::sse_encode(self.error, serializer);
         <Option<crate::api::CoreError>>::sse_encode(self.auto_send_error, serializer);
         <String>::sse_encode(self.auto_send_input, serializer);
+        <crate::api::ModemLines>::sse_encode(self.modem_lines, serializer);
+        <crate::api::SequenceSendState>::sse_encode(self.sequence_send, serializer);
     }
 }
 
@@ -2840,6 +3090,9 @@ impl SseEncode for crate::api::ErrorCode {
                 crate::api::ErrorCode::NoLogsToExport => 23,
                 crate::api::ErrorCode::ExportFailed => 24,
                 crate::api::ErrorCode::QueueCapacityInvalid => 25,
+                crate::api::ErrorCode::ModemLineUnavailable => 26,
+                crate::api::ErrorCode::SendScheduleConflict => 27,
+                crate::api::ErrorCode::SequenceTooLong => 28,
                 _ => {
                     unimplemented!("");
                 }
@@ -3044,6 +3297,16 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Vec<crate::api::SequenceItem> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::SequenceItem>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for crate::api::LogDelta {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3076,6 +3339,14 @@ impl SseEncode for crate::api::LogSnapshot {
         <u64>::sse_encode(self.trimmed_bytes, serializer);
         <u64>::sse_encode(self.trimmed_records, serializer);
         <bool>::sse_encode(self.incomplete, serializer);
+    }
+}
+
+impl SseEncode for crate::api::ModemLines {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.dtr, serializer);
+        <bool>::sse_encode(self.rts, serializer);
     }
 }
 
@@ -3322,6 +3593,26 @@ impl SseEncode for crate::api::SendSettings {
         <bool>::sse_encode(self.append_newline, serializer);
         <bool>::sse_encode(self.auto_send_enabled, serializer);
         <u32>::sse_encode(self.auto_send_interval_ms, serializer);
+    }
+}
+
+impl SseEncode for crate::api::SequenceItem {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.input, serializer);
+        <bool>::sse_encode(self.hex, serializer);
+        <crate::api::Newline>::sse_encode(self.newline, serializer);
+    }
+}
+
+impl SseEncode for crate::api::SequenceSendState {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.enabled, serializer);
+        <u32>::sse_encode(self.interval_ms, serializer);
+        <u32>::sse_encode(self.next_index, serializer);
+        <u32>::sse_encode(self.item_count, serializer);
+        <Option<crate::api::CoreError>>::sse_encode(self.error, serializer);
     }
 }
 

@@ -174,6 +174,24 @@ fn port_error(
     )
 }
 
+pub(crate) fn write_dtr(
+    port: &mut dyn serialport::SerialPort,
+    name: &str,
+    level: bool,
+) -> Result<(), CoreError> {
+    port.write_data_terminal_ready(level)
+        .map_err(|error| port_error(error, "set DTR on", name, ErrorKind::WriteFailed))
+}
+
+pub(crate) fn write_rts(
+    port: &mut dyn serialport::SerialPort,
+    name: &str,
+    level: bool,
+) -> Result<(), CoreError> {
+    port.write_request_to_send(level)
+        .map_err(|error| port_error(error, "set RTS on", name, ErrorKind::WriteFailed))
+}
+
 pub(crate) fn set_read_timeout(
     port: &mut dyn serialport::SerialPort,
     timeout: Duration,

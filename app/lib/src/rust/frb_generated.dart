@@ -64,7 +64,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -374635432;
+  int get rustContentHash => 1042890326;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -140,6 +140,19 @@ abstract class RustLibApi extends BaseApi {
   Future<DispatchReply> crateApiSetConfig({
     required CoreHandle handle,
     required AppConfig config,
+  });
+
+  Future<DispatchReply> crateApiSetModemLines({
+    required CoreHandle handle,
+    bool? dtr,
+    bool? rts,
+  });
+
+  Future<DispatchReply> crateApiSetSequenceSend({
+    required CoreHandle handle,
+    required bool enabled,
+    required int intervalMs,
+    required List<SequenceItem> items,
   });
 
   Future<SnapshotReply> crateApiSnapshot({required CoreHandle handle});
@@ -731,6 +744,86 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<DispatchReply> crateApiSetModemLines({
+    required CoreHandle handle,
+    bool? dtr,
+    bool? rts,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCoreHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_opt_box_autoadd_bool(dtr, serializer);
+          sse_encode_opt_box_autoadd_bool(rts, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_dispatch_reply,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiSetModemLinesConstMeta,
+        argValues: [handle, dtr, rts],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSetModemLinesConstMeta => const TaskConstMeta(
+    debugName: "set_modem_lines",
+    argNames: ["handle", "dtr", "rts"],
+  );
+
+  @override
+  Future<DispatchReply> crateApiSetSequenceSend({
+    required CoreHandle handle,
+    required bool enabled,
+    required int intervalMs,
+    required List<SequenceItem> items,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCoreHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_bool(enabled, serializer);
+          sse_encode_u_32(intervalMs, serializer);
+          sse_encode_list_sequence_item(items, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_dispatch_reply,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiSetSequenceSendConstMeta,
+        argValues: [handle, enabled, intervalMs, items],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSetSequenceSendConstMeta => const TaskConstMeta(
+    debugName: "set_sequence_send",
+    argNames: ["handle", "enabled", "intervalMs", "items"],
+  );
+
+  @override
   Future<SnapshotReply> crateApiSnapshot({required CoreHandle handle}) {
     return handler.executeNormal(
       NormalTask(
@@ -743,7 +836,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 19,
             port: port_,
           );
         },
@@ -774,7 +867,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 20,
             port: port_,
           );
         },
@@ -809,7 +902,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 21,
             port: port_,
           );
         },
@@ -940,8 +1033,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   AppSnapshot dco_decode_app_snapshot(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 14)
-      throw Exception('unexpected arr length: expect 14 but see ${arr.length}');
+    if (arr.length != 16)
+      throw Exception('unexpected arr length: expect 16 but see ${arr.length}');
     return AppSnapshot(
       sequence: dco_decode_CastedPrimitive_u_64(arr[0]),
       config: dco_decode_app_config(arr[1]),
@@ -957,6 +1050,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       autoSendError: dco_decode_opt_box_autoadd_core_error(arr[11]),
       log: dco_decode_log_snapshot(arr[12]),
       autoSendInput: dco_decode_String(arr[13]),
+      modemLines: dco_decode_modem_lines(arr[14]),
+      sequenceSend: dco_decode_sequence_send_state(arr[15]),
     );
   }
 
@@ -964,8 +1059,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   AppState dco_decode_app_state(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 13)
-      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
+    if (arr.length != 15)
+      throw Exception('unexpected arr length: expect 15 but see ${arr.length}');
     return AppState(
       sequence: dco_decode_CastedPrimitive_u_64(arr[0]),
       config: dco_decode_app_config(arr[1]),
@@ -980,6 +1075,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       error: dco_decode_opt_box_autoadd_core_error(arr[10]),
       autoSendError: dco_decode_opt_box_autoadd_core_error(arr[11]),
       autoSendInput: dco_decode_String(arr[12]),
+      modemLines: dco_decode_modem_lines(arr[13]),
+      sequenceSend: dco_decode_sequence_send_state(arr[14]),
     );
   }
 
@@ -1336,6 +1433,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<SequenceItem> dco_decode_list_sequence_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_sequence_item).toList();
+  }
+
+  @protected
   LogDelta dco_decode_log_delta(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1379,6 +1482,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       trimmedBytes: dco_decode_CastedPrimitive_u_64(arr[2]),
       trimmedRecords: dco_decode_CastedPrimitive_u_64(arr[3]),
       incomplete: dco_decode_bool(arr[4]),
+    );
+  }
+
+  @protected
+  ModemLines dco_decode_modem_lines(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ModemLines(
+      dtr: dco_decode_bool(arr[0]),
+      rts: dco_decode_bool(arr[1]),
     );
   }
 
@@ -1540,6 +1655,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       appendNewline: dco_decode_bool(arr[2]),
       autoSendEnabled: dco_decode_bool(arr[3]),
       autoSendIntervalMs: dco_decode_u_32(arr[4]),
+    );
+  }
+
+  @protected
+  SequenceItem dco_decode_sequence_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return SequenceItem(
+      input: dco_decode_String(arr[0]),
+      hex: dco_decode_bool(arr[1]),
+      newline: dco_decode_newline(arr[2]),
+    );
+  }
+
+  @protected
+  SequenceSendState dco_decode_sequence_send_state(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return SequenceSendState(
+      enabled: dco_decode_bool(arr[0]),
+      intervalMs: dco_decode_u_32(arr[1]),
+      nextIndex: dco_decode_u_32(arr[2]),
+      itemCount: dco_decode_u_32(arr[3]),
+      error: dco_decode_opt_box_autoadd_core_error(arr[4]),
     );
   }
 
@@ -1747,6 +1890,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_autoSendError = sse_decode_opt_box_autoadd_core_error(deserializer);
     var var_log = sse_decode_log_snapshot(deserializer);
     var var_autoSendInput = sse_decode_String(deserializer);
+    var var_modemLines = sse_decode_modem_lines(deserializer);
+    var var_sequenceSend = sse_decode_sequence_send_state(deserializer);
     return AppSnapshot(
       sequence: var_sequence,
       config: var_config,
@@ -1762,6 +1907,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       autoSendError: var_autoSendError,
       log: var_log,
       autoSendInput: var_autoSendInput,
+      modemLines: var_modemLines,
+      sequenceSend: var_sequenceSend,
     );
   }
 
@@ -1783,6 +1930,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_error = sse_decode_opt_box_autoadd_core_error(deserializer);
     var var_autoSendError = sse_decode_opt_box_autoadd_core_error(deserializer);
     var var_autoSendInput = sse_decode_String(deserializer);
+    var var_modemLines = sse_decode_modem_lines(deserializer);
+    var var_sequenceSend = sse_decode_sequence_send_state(deserializer);
     return AppState(
       sequence: var_sequence,
       config: var_config,
@@ -1797,6 +1946,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       error: var_error,
       autoSendError: var_autoSendError,
       autoSendInput: var_autoSendInput,
+      modemLines: var_modemLines,
+      sequenceSend: var_sequenceSend,
     );
   }
 
@@ -2219,6 +2370,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<SequenceItem> sse_decode_list_sequence_item(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <SequenceItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_sequence_item(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   LogDelta sse_decode_log_delta(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_upsert = sse_decode_list_log_record(deserializer);
@@ -2271,6 +2436,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       trimmedRecords: var_trimmedRecords,
       incomplete: var_incomplete,
     );
+  }
+
+  @protected
+  ModemLines sse_decode_modem_lines(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_dtr = sse_decode_bool(deserializer);
+    var var_rts = sse_decode_bool(deserializer);
+    return ModemLines(dtr: var_dtr, rts: var_rts);
   }
 
   @protected
@@ -2547,6 +2720,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SequenceItem sse_decode_sequence_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_input = sse_decode_String(deserializer);
+    var var_hex = sse_decode_bool(deserializer);
+    var var_newline = sse_decode_newline(deserializer);
+    return SequenceItem(input: var_input, hex: var_hex, newline: var_newline);
+  }
+
+  @protected
+  SequenceSendState sse_decode_sequence_send_state(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_enabled = sse_decode_bool(deserializer);
+    var var_intervalMs = sse_decode_u_32(deserializer);
+    var var_nextIndex = sse_decode_u_32(deserializer);
+    var var_itemCount = sse_decode_u_32(deserializer);
+    var var_error = sse_decode_opt_box_autoadd_core_error(deserializer);
+    return SequenceSendState(
+      enabled: var_enabled,
+      intervalMs: var_intervalMs,
+      nextIndex: var_nextIndex,
+      itemCount: var_itemCount,
+      error: var_error,
+    );
+  }
+
+  @protected
   SerialConfig sse_decode_serial_config(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_portName = sse_decode_String(deserializer);
@@ -2743,6 +2944,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_box_autoadd_core_error(self.autoSendError, serializer);
     sse_encode_log_snapshot(self.log, serializer);
     sse_encode_String(self.autoSendInput, serializer);
+    sse_encode_modem_lines(self.modemLines, serializer);
+    sse_encode_sequence_send_state(self.sequenceSend, serializer);
   }
 
   @protected
@@ -2761,6 +2964,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_box_autoadd_core_error(self.error, serializer);
     sse_encode_opt_box_autoadd_core_error(self.autoSendError, serializer);
     sse_encode_String(self.autoSendInput, serializer);
+    sse_encode_modem_lines(self.modemLines, serializer);
+    sse_encode_sequence_send_state(self.sequenceSend, serializer);
   }
 
   @protected
@@ -3138,6 +3343,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_sequence_item(
+    List<SequenceItem> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_sequence_item(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_log_delta(LogDelta self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_log_record(self.upsert, serializer);
@@ -3167,6 +3384,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_CastedPrimitive_u_64(self.trimmedBytes, serializer);
     sse_encode_CastedPrimitive_u_64(self.trimmedRecords, serializer);
     sse_encode_bool(self.incomplete, serializer);
+  }
+
+  @protected
+  void sse_encode_modem_lines(ModemLines self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.dtr, serializer);
+    sse_encode_bool(self.rts, serializer);
   }
 
   @protected
@@ -3445,6 +3669,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.appendNewline, serializer);
     sse_encode_bool(self.autoSendEnabled, serializer);
     sse_encode_u_32(self.autoSendIntervalMs, serializer);
+  }
+
+  @protected
+  void sse_encode_sequence_item(SequenceItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.input, serializer);
+    sse_encode_bool(self.hex, serializer);
+    sse_encode_newline(self.newline, serializer);
+  }
+
+  @protected
+  void sse_encode_sequence_send_state(
+    SequenceSendState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.enabled, serializer);
+    sse_encode_u_32(self.intervalMs, serializer);
+    sse_encode_u_32(self.nextIndex, serializer);
+    sse_encode_u_32(self.itemCount, serializer);
+    sse_encode_opt_box_autoadd_core_error(self.error, serializer);
   }
 
   @protected

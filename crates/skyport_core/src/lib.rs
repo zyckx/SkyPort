@@ -58,6 +58,9 @@ pub enum ErrorCode {
     NoLogsToExport,
     ExportFailed,
     QueueCapacityInvalid,
+    ModemLineUnavailable,
+    SendScheduleConflict,
+    SequenceTooLong,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -104,6 +107,35 @@ pub enum ConnectionState {
     Closed,
 }
 
+/// Output modem control lines as last applied to the open port. Both are
+/// deasserted whenever a port is opened or closed.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ModemLines {
+    pub dtr: bool,
+    pub rts: bool,
+}
+
+/// One step of a looping command sequence. Encoding follows the same rules as
+/// `Command::SendText` (text plus [`Newline`]) or `Command::SendHex`.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct SequenceItem {
+    pub input: String,
+    pub hex: bool,
+    pub newline: Newline,
+}
+
+/// Runtime state of the looping sequence sender (not persisted).
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct SequenceSendState {
+    pub enabled: bool,
+    pub interval_ms: u32,
+    /// Index of the item the next tick sends.
+    pub next_index: u32,
+    pub item_count: u32,
+    /// Why the sequence stopped on its own, if it did.
+    pub error: Option<CoreError>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AppSnapshot {
     pub sequence: u64,
@@ -120,6 +152,8 @@ pub struct AppSnapshot {
     pub auto_send_error: Option<CoreError>,
     pub log: LogSnapshot,
     pub auto_send_input: String,
+    pub modem_lines: ModemLines,
+    pub sequence_send: SequenceSendState,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -137,6 +171,8 @@ pub struct AppState {
     pub error: Option<CoreError>,
     pub auto_send_error: Option<CoreError>,
     pub auto_send_input: String,
+    pub modem_lines: ModemLines,
+    pub sequence_send: SequenceSendState,
 }
 #[derive(Clone, Debug, Default)]
 pub struct ConfigPatch {
@@ -174,6 +210,18 @@ pub enum Command {
     },
     ClearLog,
     SetAutoReconnect(bool),
+    /// Sets DTR and/or RTS on the open port; `None` leaves a line unchanged.
+    SetModemLines {
+        dtr: Option<bool>,
+        rts: Option<bool>,
+    },
+    /// Starts (replacing any running sequence) or stops looping through
+    /// `items`, one item per `interval_ms`.
+    SetSequenceSend {
+        enabled: bool,
+        interval_ms: u32,
+        items: Vec<SequenceItem>,
+    },
     SetAutoSend {
         enabled: bool,
         interval_ms: u32,

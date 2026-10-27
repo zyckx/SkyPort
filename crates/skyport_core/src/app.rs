@@ -1,7 +1,7 @@
 use crate::{
     serial, timestamp_ms, AppConfig, AppOptions, AppSnapshot, AppState, Command, ConnectionState,
-    CoreError, ErrorCode, ErrorKind, Event, EventKind, LogDelta, LogStore, Newline, RequestId,
-    SerialConfig,
+    CoreError, ErrorCode, ErrorKind, Event, EventKind, FlowControl, LogDelta, LogStore, ModemLines,
+    Newline, RequestId, SequenceItem, SequenceSendState, SerialConfig,
 };
 use std::{
     collections::HashMap,
@@ -33,6 +33,8 @@ struct State {
     snapshot: AppSnapshot,
     log: LogStore,
     auto_payload: Option<AutoPayload>,
+    /// Encoded payloads of the running sequence, in send order.
+    sequence: Vec<Arc<[u8]>>,
     subscribers: HashMap<u64, Subscriber>,
     next_subscriber: u64,
 }
@@ -86,12 +88,15 @@ impl AppCore {
             auto_send_error: None,
             log: LogStore::new(config.log_capacity_bytes).snapshot(),
             auto_send_input: String::new(),
+            modem_lines: ModemLines::default(),
+            sequence_send: SequenceSendState::default(),
         };
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 snapshot,
                 log: LogStore::new(config.log_capacity_bytes),
                 auto_payload: None,
+                sequence: Vec::new(),
                 subscribers: HashMap::new(),
                 next_subscriber: 1,
             }),
@@ -392,6 +397,7 @@ fn run_worker(
     let mut rate_sample_bytes = 0;
     let mut rate_connection = ConnectionState::Disconnected;
     let mut next_auto = Instant::now();
+    let mut next_sequence = Instant::now();
     let mut next_ports = Instant::now();
     let mut buf = [0u8; 8192];
     loop {
@@ -408,7 +414,12 @@ fn run_worker(
             }
             break;
         }
-        match rx.recv_timeout(auto_wait(&shared, next_auto, Duration::from_millis(10))) {
+        match rx.recv_timeout(auto_wait(
+            &shared,
+            next_auto,
+            next_sequence,
+            Duration::from_millis(10),
+        )) {
             Ok((id, command)) => handle_command(
                 id,
                 command,
@@ -417,6 +428,7 @@ fn run_worker(
                 &mut port,
                 &mut reconnect_at,
                 &mut next_auto,
+                &mut next_sequence,
                 &mut link_lost,
             ),
             Err(RecvTimeoutError::Disconnected) => break,
@@ -442,7 +454,7 @@ fn run_worker(
             continue;
         }
         if let Some(open) = port.as_mut() {
-            let timeout = auto_wait(&shared, next_auto, serial::READ_POLL_TIMEOUT)
+            let timeout = auto_wait(&shared, next_auto, next_sequence, serial::READ_POLL_TIMEOUT)
                 .max(Duration::from_millis(1));
             if let Err(error) = serial::set_read_timeout(open.as_mut(), timeout) {
                 port = None;
@@ -518,6 +530,13 @@ fn run_worker(
                 &mut reconnect_at,
                 &mut link_lost,
             );
+            sequence_send(
+                &shared,
+                &mut port,
+                &mut next_sequence,
+                &mut reconnect_at,
+                &mut link_lost,
+            );
         }
     }
 }
@@ -530,6 +549,7 @@ fn handle_command(
     port: &mut Option<Box<dyn serialport::SerialPort>>,
     reconnect_at: &mut Option<Instant>,
     next_auto: &mut Instant,
+    next_sequence: &mut Instant,
     link_lost: &mut bool,
 ) {
     let mut send_final = false;
@@ -696,6 +716,12 @@ fn handle_command(
                 }
                 Ok(())
             }
+            Command::SetModemLines { dtr, rts } => set_modem_lines(shared, port, dtr, rts),
+            Command::SetSequenceSend {
+                enabled,
+                interval_ms,
+                items,
+            } => set_sequence_send(shared, enabled, interval_ms, &items, next_sequence),
             Command::SetAutoReconnect(enabled) => {
                 let mut config = snapshot_config(shared)?;
                 config.serial.auto_reconnect = enabled;
@@ -790,6 +816,18 @@ fn apply_config(
 ) -> Result<(), CoreError> {
     config.validate()?;
     let previous = snapshot_config(shared)?;
+    if config.send.auto_send_enabled
+        && !previous.send.auto_send_enabled
+        && shared
+            .state
+            .lock()
+            .map_err(lock_error)?
+            .snapshot
+            .sequence_send
+            .enabled
+    {
+        return Err(schedule_conflict());
+    }
     let current_input = match auto_input.as_ref() {
         Some(input) => input.clone(),
         None => shared
@@ -949,6 +987,11 @@ fn validate_command(command: &Command) -> Result<(), CoreError> {
                     .with_code(ErrorCode::SendInputTooLarge),
             )
         }
+        Command::SetSequenceSend {
+            enabled: true,
+            interval_ms,
+            items,
+        } => prepare_sequence(*interval_ms, items).map(|_| ()),
         _ => Ok(()),
     }
 }
@@ -1089,6 +1132,179 @@ fn auto_send(
         }
     }
 }
+const MAX_SEQUENCE_ITEMS: usize = 200;
+const MAX_SEQUENCE_BYTES: usize = 4 * 1_048_576;
+fn schedule_conflict() -> CoreError {
+    CoreError::new(
+        ErrorKind::InvalidArgument,
+        "auto-send and sequence send cannot run at the same time",
+    )
+    .with_code(ErrorCode::SendScheduleConflict)
+}
+/// Encodes every sequence item up front so a bad item rejects the whole
+/// request instead of failing midway through a running loop.
+fn prepare_sequence(interval_ms: u32, items: &[SequenceItem]) -> Result<Vec<Arc<[u8]>>, CoreError> {
+    if !(10..=60_000).contains(&interval_ms) {
+        return Err(CoreError::new(
+            ErrorKind::InvalidArgument,
+            "sequence interval must be between 10 and 60000 milliseconds",
+        )
+        .with_code(ErrorCode::AutoSendIntervalInvalid));
+    }
+    if items.is_empty() {
+        return Err(
+            CoreError::new(ErrorKind::InvalidArgument, "sequence has no items")
+                .with_code(ErrorCode::SendEmpty),
+        );
+    }
+    if items.len() > MAX_SEQUENCE_ITEMS {
+        return Err(CoreError::new(
+            ErrorKind::InvalidArgument,
+            format!("sequence exceeds {MAX_SEQUENCE_ITEMS} items"),
+        )
+        .with_code(ErrorCode::SequenceTooLong));
+    }
+    let mut total = 0usize;
+    let mut payloads = Vec::with_capacity(items.len());
+    for item in items {
+        let bytes = if item.hex {
+            if item.input.len() > 2_097_152 {
+                return Err(
+                    CoreError::new(ErrorKind::InvalidArgument, "send input exceeds 2 MiB")
+                        .with_code(ErrorCode::SendInputTooLarge),
+                );
+            }
+            serial::decode_hex(&item.input)?
+        } else {
+            serial::encode_text(&item.input, item.newline)
+        };
+        if bytes.is_empty() {
+            return Err(
+                CoreError::new(ErrorKind::InvalidArgument, "send data must not be empty")
+                    .with_code(ErrorCode::SendEmpty),
+            );
+        }
+        total = total.saturating_add(bytes.len());
+        if bytes.len() > 1_048_576 || total > MAX_SEQUENCE_BYTES {
+            return Err(
+                CoreError::new(ErrorKind::InvalidArgument, "sequence send is too large")
+                    .with_code(ErrorCode::SendTooLarge),
+            );
+        }
+        payloads.push(Arc::from(bytes));
+    }
+    Ok(payloads)
+}
+fn set_sequence_send(
+    shared: &Shared,
+    enabled: bool,
+    interval_ms: u32,
+    items: &[SequenceItem],
+    next: &mut Instant,
+) -> Result<(), CoreError> {
+    let payloads = if enabled {
+        prepare_sequence(interval_ms, items)?
+    } else {
+        Vec::new()
+    };
+    let mut state = shared.state.lock().map_err(lock_error)?;
+    if enabled && state.snapshot.config.send.auto_send_enabled {
+        return Err(schedule_conflict());
+    }
+    state.snapshot.sequence_send = if enabled {
+        SequenceSendState {
+            enabled: true,
+            interval_ms,
+            next_index: 0,
+            item_count: payloads.len() as u32,
+            error: None,
+        }
+    } else {
+        SequenceSendState::default()
+    };
+    state.sequence = payloads;
+    *next = Instant::now();
+    publish_state_event_locked(&mut state);
+    Ok(())
+}
+/// Sends the next sequence item when due. While no port is open the sequence
+/// waits without advancing; a write failure stops it and keeps the error
+/// visible in the state. Partially written bytes are still recorded.
+fn sequence_send(
+    shared: &Arc<Shared>,
+    port: &mut Option<Box<dyn serialport::SerialPort>>,
+    next: &mut Instant,
+    reconnect_at: &mut Option<Instant>,
+    link_lost: &mut bool,
+) {
+    let (data, index) = {
+        let mut state = shared
+            .state
+            .lock()
+            .expect("core worker state lock poisoned");
+        let run = &state.snapshot.sequence_send;
+        if !run.enabled || Instant::now() < *next {
+            return;
+        }
+        *next = Instant::now() + Duration::from_millis(run.interval_ms as u64);
+        if port.is_none() {
+            return;
+        }
+        let index = run.next_index as usize;
+        let Some(data) = state.sequence.get(index).cloned() else {
+            state.sequence.clear();
+            state.snapshot.sequence_send = SequenceSendState::default();
+            publish_state_event_locked(&mut state);
+            return;
+        };
+        (data, index)
+    };
+    let result = match port.as_mut() {
+        Some(open) => serial::write_all_accounted(open.as_mut(), &data),
+        None => return,
+    };
+    match result {
+        Ok(()) => {
+            if let Err(error) = record_tx_with_total(shared, data.to_vec(), 0) {
+                publish_simple(shared, EventKind::TaskFailed(error));
+            }
+            let mut state = shared
+                .state
+                .lock()
+                .expect("core worker state lock poisoned");
+            if state.snapshot.sequence_send.enabled {
+                let count = state.sequence.len().max(1);
+                state.snapshot.sequence_send.next_index = ((index + 1) % count) as u32;
+                publish_state_event_locked(&mut state);
+            }
+        }
+        Err(error) => {
+            if error.bytes_written > 0 {
+                if let Err(logging_error) = record_tx(shared, &data[..error.bytes_written as usize])
+                {
+                    publish_simple(shared, EventKind::TaskFailed(logging_error));
+                }
+            }
+            publish_simple(shared, EventKind::TaskFailed(error.clone()));
+            if let Ok(mut state) = shared.state.lock() {
+                state.sequence.clear();
+                state.snapshot.sequence_send = SequenceSendState {
+                    error: Some(error.clone()),
+                    ..SequenceSendState::default()
+                };
+                publish_state_event_locked(&mut state);
+            }
+            if error.kind == ErrorKind::Disconnected {
+                *port = None;
+                *link_lost = true;
+                let retry =
+                    auto_reconnect_enabled(shared).expect("core worker state lock poisoned");
+                publish_disconnected(shared, error, retry);
+                *reconnect_at = retry.then(|| Instant::now() + Duration::from_secs(1));
+            }
+        }
+    }
+}
 fn persist_update(shared: &Arc<Shared>, dir: &Path, cfg: AppConfig) -> Result<(), CoreError> {
     cfg.save(dir)?;
     update_config(shared, cfg)
@@ -1203,6 +1419,10 @@ fn publish_state(shared: &Shared, connection: ConnectionState, error: Option<Cor
         }
         s.snapshot.connection = connection;
         s.snapshot.error = error;
+        if connection != ConnectionState::Connected {
+            // Any other state means the port was or is about to be dropped.
+            s.snapshot.modem_lines = ModemLines::default();
+        }
         if connection == ConnectionState::Connected {
             s.snapshot.connected_at_ms = Some(timestamp_ms());
             s.snapshot.applied_config = Some(s.snapshot.config.serial.clone());
@@ -1224,6 +1444,7 @@ fn publish_connected(shared: &Shared, cfg: SerialConfig) {
         }
         s.snapshot.connection = ConnectionState::Connected;
         s.snapshot.error = None;
+        s.snapshot.modem_lines = ModemLines::default();
         s.snapshot.connected_at_ms = Some(timestamp_ms());
         s.snapshot.applied_config = Some(cfg);
         publish_state_event_locked(&mut s);
@@ -1260,6 +1481,7 @@ fn publish_disconnected(shared: &Shared, error: CoreError, reconnecting: bool) {
         s.snapshot.error = Some(error.clone());
         s.snapshot.connected_at_ms = None;
         s.snapshot.applied_config = None;
+        s.snapshot.modem_lines = ModemLines::default();
         publish_state_event_locked(&mut s);
         publish_simple_locked(&mut s, EventKind::Disconnected(error));
     }
@@ -1306,6 +1528,65 @@ fn publish_error_state(shared: &Shared, error: CoreError) {
         publish_state_event_locked(&mut state);
     }
 }
+/// Drives DTR/RTS on the open port. Each line is applied in turn and the
+/// published state reflects exactly what succeeded, so a failure on RTS
+/// still reports an already-applied DTR change. Nothing is retried.
+fn set_modem_lines(
+    shared: &Shared,
+    port: &mut Option<Box<dyn serialport::SerialPort>>,
+    dtr: Option<bool>,
+    rts: Option<bool>,
+) -> Result<(), CoreError> {
+    let Some(open) = port.as_mut() else {
+        return Err(CoreError::new(
+            ErrorKind::Disconnected,
+            "serial port is not connected",
+        ));
+    };
+    let (mut applied, applied_config) = {
+        let state = shared.state.lock().map_err(lock_error)?;
+        (
+            state.snapshot.modem_lines,
+            state.snapshot.applied_config.clone(),
+        )
+    };
+    let name = applied_config
+        .as_ref()
+        .map_or(String::new(), |config| config.port_name.clone());
+    if rts.is_some()
+        && applied_config
+            .as_ref()
+            .is_some_and(|config| config.flow_control == FlowControl::Hardware)
+    {
+        return Err(CoreError::new(
+            ErrorKind::InvalidArgument,
+            "RTS is controlled by hardware flow control",
+        )
+        .with_code(ErrorCode::ModemLineUnavailable));
+    }
+    let mut result = Ok(());
+    if let Some(level) = dtr {
+        match serial::write_dtr(open.as_mut(), &name, level) {
+            Ok(()) => applied.dtr = level,
+            Err(error) => result = Err(error),
+        }
+    }
+    if let (Some(level), Ok(())) = (rts, &result) {
+        match serial::write_rts(open.as_mut(), &name, level) {
+            Ok(()) => applied.rts = level,
+            Err(error) => result = Err(error),
+        }
+    }
+    if let Ok(mut state) = shared.state.lock() {
+        if state.snapshot.connection == ConnectionState::Connected
+            && state.snapshot.modem_lines != applied
+        {
+            state.snapshot.modem_lines = applied;
+            publish_state_event_locked(&mut state);
+        }
+    }
+    result
+}
 fn app_state(snapshot: &AppSnapshot) -> AppState {
     AppState {
         sequence: snapshot.sequence,
@@ -1321,6 +1602,8 @@ fn app_state(snapshot: &AppSnapshot) -> AppState {
         error: snapshot.error.clone(),
         auto_send_error: snapshot.auto_send_error.clone(),
         auto_send_input: snapshot.auto_send_input.clone(),
+        modem_lines: snapshot.modem_lines,
+        sequence_send: snapshot.sequence_send.clone(),
     }
 }
 fn update_rx_rate(
@@ -1549,14 +1832,23 @@ fn write_export_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
     result
 }
 
-fn auto_wait(shared: &Shared, next: Instant, maximum: Duration) -> Duration {
+fn auto_wait(
+    shared: &Shared,
+    next_auto: Instant,
+    next_sequence: Instant,
+    maximum: Duration,
+) -> Duration {
     let state = shared
         .state
         .lock()
         .expect("core worker state lock poisoned");
+    let now = Instant::now();
+    let mut wait = maximum;
     if state.snapshot.config.send.auto_send_enabled {
-        maximum.min(next.saturating_duration_since(Instant::now()))
-    } else {
-        maximum
+        wait = wait.min(next_auto.saturating_duration_since(now));
     }
+    if state.snapshot.sequence_send.enabled {
+        wait = wait.min(next_sequence.saturating_duration_since(now));
+    }
+    wait
 }

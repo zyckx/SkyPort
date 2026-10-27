@@ -215,6 +215,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<SequenceItem> dco_decode_list_sequence_item(dynamic raw);
+
+  @protected
   LogDelta dco_decode_log_delta(dynamic raw);
 
   @protected
@@ -222,6 +225,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   LogSnapshot dco_decode_log_snapshot(dynamic raw);
+
+  @protected
+  ModemLines dco_decode_modem_lines(dynamic raw);
 
   @protected
   Newline dco_decode_newline(dynamic raw);
@@ -297,6 +303,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   SendSettings dco_decode_send_settings(dynamic raw);
+
+  @protected
+  SequenceItem dco_decode_sequence_item(dynamic raw);
+
+  @protected
+  SequenceSendState dco_decode_sequence_send_state(dynamic raw);
 
   @protected
   SerialConfig dco_decode_serial_config(dynamic raw);
@@ -515,6 +527,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<SequenceItem> sse_decode_list_sequence_item(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   LogDelta sse_decode_log_delta(SseDeserializer deserializer);
 
   @protected
@@ -522,6 +539,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   LogSnapshot sse_decode_log_snapshot(SseDeserializer deserializer);
+
+  @protected
+  ModemLines sse_decode_modem_lines(SseDeserializer deserializer);
 
   @protected
   Newline sse_decode_newline(SseDeserializer deserializer);
@@ -609,6 +629,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   SendSettings sse_decode_send_settings(SseDeserializer deserializer);
+
+  @protected
+  SequenceItem sse_decode_sequence_item(SseDeserializer deserializer);
+
+  @protected
+  SequenceSendState sse_decode_sequence_send_state(
+    SseDeserializer deserializer,
+  );
 
   @protected
   SerialConfig sse_decode_serial_config(SseDeserializer deserializer);
@@ -877,6 +905,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_sequence_item(
+    List<SequenceItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_log_delta(LogDelta self, SseSerializer serializer);
 
   @protected
@@ -884,6 +918,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_log_snapshot(LogSnapshot self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_modem_lines(ModemLines self, SseSerializer serializer);
 
   @protected
   void sse_encode_newline(Newline self, SseSerializer serializer);
@@ -994,6 +1031,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_send_settings(SendSettings self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_sequence_item(SequenceItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_sequence_send_state(
+    SequenceSendState self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_serial_config(SerialConfig self, SseSerializer serializer);

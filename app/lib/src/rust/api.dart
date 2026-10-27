@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `dispatch`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 Future<CreateCoreReply> createCore({
   required String dataDirectory,
@@ -80,6 +80,31 @@ Future<DispatchReply> setAutoReconnect({
 }) => RustLib.instance.api.crateApiSetAutoReconnect(
   handle: handle,
   enabled: enabled,
+);
+
+/// Sets DTR and/or RTS on the open port; `None` leaves a line unchanged.
+Future<DispatchReply> setModemLines({
+  required CoreHandle handle,
+  bool? dtr,
+  bool? rts,
+}) => RustLib.instance.api.crateApiSetModemLines(
+  handle: handle,
+  dtr: dtr,
+  rts: rts,
+);
+
+/// Starts or stops looping through `items`; the core encodes and validates
+/// every item before accepting the request.
+Future<DispatchReply> setSequenceSend({
+  required CoreHandle handle,
+  required bool enabled,
+  required int intervalMs,
+  required List<SequenceItem> items,
+}) => RustLib.instance.api.crateApiSetSequenceSend(
+  handle: handle,
+  enabled: enabled,
+  intervalMs: intervalMs,
+  items: items,
 );
 
 Future<DispatchReply> setAutoSend({
@@ -164,6 +189,8 @@ class AppSnapshot {
   final CoreError? autoSendError;
   final LogSnapshot log;
   final String autoSendInput;
+  final ModemLines modemLines;
+  final SequenceSendState sequenceSend;
 
   const AppSnapshot({
     required this.sequence,
@@ -180,6 +207,8 @@ class AppSnapshot {
     this.autoSendError,
     required this.log,
     required this.autoSendInput,
+    required this.modemLines,
+    required this.sequenceSend,
   });
 
   @override
@@ -197,7 +226,9 @@ class AppSnapshot {
       error.hashCode ^
       autoSendError.hashCode ^
       log.hashCode ^
-      autoSendInput.hashCode;
+      autoSendInput.hashCode ^
+      modemLines.hashCode ^
+      sequenceSend.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -217,7 +248,9 @@ class AppSnapshot {
           error == other.error &&
           autoSendError == other.autoSendError &&
           log == other.log &&
-          autoSendInput == other.autoSendInput;
+          autoSendInput == other.autoSendInput &&
+          modemLines == other.modemLines &&
+          sequenceSend == other.sequenceSend;
 }
 
 class AppState {
@@ -234,6 +267,8 @@ class AppState {
   final CoreError? error;
   final CoreError? autoSendError;
   final String autoSendInput;
+  final ModemLines modemLines;
+  final SequenceSendState sequenceSend;
 
   const AppState({
     required this.sequence,
@@ -249,6 +284,8 @@ class AppState {
     this.error,
     this.autoSendError,
     required this.autoSendInput,
+    required this.modemLines,
+    required this.sequenceSend,
   });
 
   @override
@@ -265,7 +302,9 @@ class AppState {
       rxBytesPerSecond.hashCode ^
       error.hashCode ^
       autoSendError.hashCode ^
-      autoSendInput.hashCode;
+      autoSendInput.hashCode ^
+      modemLines.hashCode ^
+      sequenceSend.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -284,7 +323,9 @@ class AppState {
           rxBytesPerSecond == other.rxBytesPerSecond &&
           error == other.error &&
           autoSendError == other.autoSendError &&
-          autoSendInput == other.autoSendInput;
+          autoSendInput == other.autoSendInput &&
+          modemLines == other.modemLines &&
+          sequenceSend == other.sequenceSend;
 }
 
 class CloseReply {
@@ -481,6 +522,9 @@ enum ErrorCode {
   noLogsToExport,
   exportFailed,
   queueCapacityInvalid,
+  modemLineUnavailable,
+  sendScheduleConflict,
+  sequenceTooLong,
 }
 
 enum ErrorKind {
@@ -804,6 +848,24 @@ class LogSnapshot {
           incomplete == other.incomplete;
 }
 
+class ModemLines {
+  final bool dtr;
+  final bool rts;
+
+  const ModemLines({required this.dtr, required this.rts});
+
+  @override
+  int get hashCode => dtr.hashCode ^ rts.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ModemLines &&
+          runtimeType == other.runtimeType &&
+          dtr == other.dtr &&
+          rts == other.rts;
+}
+
 enum Newline { none, lf, cr, crLf }
 
 enum Parity { none, odd, even }
@@ -841,6 +903,65 @@ class SendSettings {
           appendNewline == other.appendNewline &&
           autoSendEnabled == other.autoSendEnabled &&
           autoSendIntervalMs == other.autoSendIntervalMs;
+}
+
+class SequenceItem {
+  final String input;
+  final bool hex;
+  final Newline newline;
+
+  const SequenceItem({
+    required this.input,
+    required this.hex,
+    required this.newline,
+  });
+
+  @override
+  int get hashCode => input.hashCode ^ hex.hashCode ^ newline.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SequenceItem &&
+          runtimeType == other.runtimeType &&
+          input == other.input &&
+          hex == other.hex &&
+          newline == other.newline;
+}
+
+class SequenceSendState {
+  final bool enabled;
+  final int intervalMs;
+  final int nextIndex;
+  final int itemCount;
+  final CoreError? error;
+
+  const SequenceSendState({
+    required this.enabled,
+    required this.intervalMs,
+    required this.nextIndex,
+    required this.itemCount,
+    this.error,
+  });
+
+  @override
+  int get hashCode =>
+      enabled.hashCode ^
+      intervalMs.hashCode ^
+      nextIndex.hashCode ^
+      itemCount.hashCode ^
+      error.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SequenceSendState &&
+          runtimeType == other.runtimeType &&
+          enabled == other.enabled &&
+          intervalMs == other.intervalMs &&
+          nextIndex == other.nextIndex &&
+          itemCount == other.itemCount &&
+          error == other.error;
 }
 
 class SerialConfig {
