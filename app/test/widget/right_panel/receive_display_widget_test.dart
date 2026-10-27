@@ -4,6 +4,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+import '../../helpers/test_app.dart';
+import 'package:skyport/widgets/ui/ui.dart';
 import 'package:skyport/l10n/app_localizations.dart';
 import 'package:skyport/models/ui_settings.dart';
 import 'package:skyport/models/ui_state.dart';
@@ -52,6 +55,13 @@ class ReceiveController extends UiController {
         incomplete: false,
       ),
       autoSendInput: '',
+      modemLines: rust.ModemLines(dtr: false, rts: false),
+      sequenceSend: rust.SequenceSendState(
+        enabled: false,
+        intervalMs: 0,
+        nextIndex: 0,
+        itemCount: 0,
+      ),
     ),
   );
 
@@ -103,11 +113,7 @@ void main() {
           uiControllerProvider.overrideWith(() => controller),
           uiSettingsProvider.overrideWith(ReceiveSettings.new),
         ],
-        child: const MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: Column(children: [ReceiveDisplayWidget()])),
-        ),
+        child: shadTestApp(home: const Scaffold(body: ReceiveDisplayWidget())),
       ),
     );
     controller.receiveThrough(2, first: 1);
@@ -133,11 +139,7 @@ void main() {
           uiControllerProvider.overrideWith(() => controller),
           uiSettingsProvider.overrideWith(ReceiveSettings.new),
         ],
-        child: const MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: Column(children: [ReceiveDisplayWidget()])),
-        ),
+        child: shadTestApp(home: const Scaffold(body: ReceiveDisplayWidget())),
       ),
     );
     controller.receiveThrough(100);
@@ -159,10 +161,10 @@ void main() {
     controller.receiveThrough(200, first: 1, textForId: textForId);
     await tester.pumpAndSettle();
     expect(position.pixels, closeTo(readingPosition, 1));
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byKey(const ValueKey('scroll-to-bottom')));
     await tester.pumpAndSettle();
     expect(position.extentAfter, closeTo(0, 1));
-    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.byKey(const ValueKey('scroll-to-bottom')), findsNothing);
     final latest = find.textContaining('row 200 ', findRichText: true);
     expect(latest, findsOneWidget);
     expect(
@@ -185,7 +187,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(position.extentAfter, greaterThan(0));
-    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byKey(const ValueKey('scroll-to-bottom')), findsOneWidget);
   });
 
   testWidgets(
@@ -198,40 +200,40 @@ void main() {
             uiControllerProvider.overrideWith(() => controller),
             uiSettingsProvider.overrideWith(ReceiveSettings.new),
           ],
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(body: Column(children: [ReceiveDisplayWidget()])),
+          child: shadTestApp(
+            home: const Scaffold(body: ReceiveDisplayWidget()),
           ),
         ),
       );
-      expect(find.byType(IconButton), findsNothing);
+      expect(find.byType(AppIconButton), findsNothing);
       controller.receiveThrough(100);
       await tester.pumpAndSettle();
       final l10n = AppLocalizations.of(
         tester.element(find.byType(ReceiveDisplayWidget)),
       );
-      final clearButton = find.byTooltip(l10n.clearReceiveArea);
-      final exportButton = find.byTooltip(l10n.exportLogs);
+      final clearButton = findTooltip(l10n.clearReceiveArea);
+      final exportButton = findTooltip(l10n.exportLogs);
       expect(tester.getSize(exportButton), const Size.square(32));
       expect(
         tester.getRect(exportButton).right,
         tester.getRect(clearButton).left - 4,
       );
-      final clear = find
-          .descendant(of: clearButton, matching: find.byType(CustomPaint))
-          .last;
+      final clear = find.descendant(
+        of: clearButton,
+        matching: find.byType(Icon),
+      );
+      final colors = ShadTheme.of(tester.element(clear)).colorScheme;
       expect(tester.getSize(clearButton), const Size.square(32));
       Color? clearColor() => IconTheme.of(tester.element(clear)).color;
-      expect(clearColor()!.a, closeTo(0.4, 0.01));
+      expect(clearColor(), colors.mutedForeground);
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await mouse.addPointer(location: Offset.zero);
       await mouse.moveTo(tester.getCenter(clear));
       await tester.pumpAndSettle();
-      expect(clearColor()!.a, 1);
+      expect(clearColor(), colors.foreground);
       await mouse.moveTo(Offset.zero);
       await tester.pumpAndSettle();
-      expect(clearColor()!.a, closeTo(0.4, 0.01));
+      expect(clearColor(), colors.mutedForeground);
       await mouse.removePointer();
       final position = tester
           .state<ScrollableState>(
@@ -283,7 +285,7 @@ void main() {
       expect(position.pixels, closeTo(readingPosition, 1));
       controller.resetLogs();
       await tester.pumpAndSettle();
-      expect(find.byType(IconButton), findsNothing);
+      expect(find.byType(AppIconButton), findsNothing);
       controller.receiveThrough(100);
       await tester.pumpAndSettle();
       expect(clearButton, findsOneWidget);

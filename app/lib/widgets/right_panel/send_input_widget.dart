@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/ui_state.dart';
 import '../../providers/ui_controller.dart';
+import '../ui/ui.dart';
 
 class SendInputWidget extends ConsumerStatefulWidget {
   const SendInputWidget({super.key});
@@ -14,7 +16,6 @@ class SendInputWidget extends ConsumerStatefulWidget {
 }
 
 class _SendInputWidgetState extends ConsumerState<SendInputWidget> {
-  final _formKey = GlobalKey<FormState>();
   final TextEditingController _sendController = TextEditingController();
   late FocusNode _focusNode;
   bool _canSend = false;
@@ -134,20 +135,26 @@ class _SendInputWidgetState extends ConsumerState<SendInputWidget> {
     return KeyEventResult.ignored;
   }
 
+  String? _hexError(bool hexSend, String value, AppLocalizations l10n) {
+    if (!hexSend || value.isEmpty) return null;
+    final sanitized = _sanitizeHex(value);
+    if (sanitized.isEmpty) return null;
+    if (!hexRegex.hasMatch(sanitized)) return l10n.invalidHexChars;
+    if (sanitized.length % 2 != 0) return l10n.hexEvenLength;
+    return null;
+  }
+
   Widget _buildTextField(bool hexSend, AppLocalizations l10n) {
-    return TextFormField(
+    return AppInput(
       controller: _sendController,
       focusNode: _focusNode,
       style: const TextStyle(fontFamily: 'monospace'),
-      decoration: InputDecoration(
-        border: const OutlineInputBorder(),
-        labelText: l10n.enterDataToSend,
-        isDense: true,
-      ),
+      placeholder: l10n.enterDataToSend,
+      semanticLabel: l10n.enterDataToSend,
+      errorText: _hexError(hexSend, _sendController.text, l10n),
       keyboardType: TextInputType.multiline,
       minLines: 1,
       maxLines: 5,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
       onChanged: (value) {
         setState(() {
           _updateCanSend(value);
@@ -160,20 +167,6 @@ class _SendInputWidgetState extends ConsumerState<SendInputWidget> {
         });
         _setDraft(value);
       },
-      validator: (value) {
-        if (hexSend) {
-          if (value == null || value.isEmpty) return null;
-          final sanitized = _sanitizeHex(value);
-          if (sanitized.isEmpty) return null;
-          if (!hexRegex.hasMatch(sanitized)) {
-            return l10n.invalidHexChars;
-          }
-          if (sanitized.length % 2 != 0) {
-            return l10n.hexEvenLength;
-          }
-        }
-        return null;
-      },
     );
   }
 
@@ -183,35 +176,23 @@ class _SendInputWidgetState extends ConsumerState<SendInputWidget> {
     required bool compact,
   }) {
     final label = AppLocalizations.of(context).send;
-    return Tooltip(
+    return AppTooltip(
       message: label,
-      child: FilledButton(
+      child: ShadButton(
+        height: 40,
+        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 20),
         onPressed: connectionState == UiConnection.connected && canSend
             ? () {
-                if (_formKey.currentState!.validate()) {
-                  final text = _sendController.text;
-                  ref.read(uiControllerProvider.notifier).send(text);
-                  setState(() {
-                    _historyIndex = -1;
-                    _tempInput = '';
-                  });
-                }
+                final text = _sendController.text;
+                ref.read(uiControllerProvider.notifier).send(text);
+                setState(() {
+                  _historyIndex = -1;
+                  _tempInput = '';
+                });
               }
             : null,
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.symmetric(
-            vertical: 16,
-            horizontal: compact ? 12 : 24,
-          ),
-          minimumSize: const Size(48, 48),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.send),
-            if (!compact) ...[const SizedBox(width: 8), Text(label)],
-          ],
-        ),
+        leading: const Icon(LucideIcons.send, size: 16),
+        child: compact ? null : Text(label),
       ),
     );
   }
@@ -234,34 +215,29 @@ class _SendInputWidgetState extends ConsumerState<SendInputWidget> {
       _setDraftAfterFrame(_sendController.text);
       _previousHexMode = hexSend;
     }
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card.filled(
-      color: colorScheme.surfaceContainerLow,
+    return AppPanel(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final input = _buildTextField(
-                hexSend,
-                AppLocalizations.of(context),
-              );
-              final send = _buildSendButton(
-                connectionState,
-                _canSend,
-                compact: constraints.maxWidth < 400,
-              );
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(child: input),
-                  const SizedBox(width: 8),
-                  send,
-                ],
-              );
-            },
-          ),
+        padding: const EdgeInsets.all(12.0),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final input = _buildTextField(
+              hexSend,
+              AppLocalizations.of(context),
+            );
+            final send = _buildSendButton(
+              connectionState,
+              _canSend,
+              compact: constraints.maxWidth < 400,
+            );
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: input),
+                const SizedBox(width: 8),
+                send,
+              ],
+            );
+          },
         ),
       ),
     );

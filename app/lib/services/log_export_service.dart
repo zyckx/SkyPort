@@ -1,10 +1,11 @@
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/app_localizations.dart';
 import '../utils/error_messages.dart';
 import '../widgets/shared/error_notice.dart';
+import '../widgets/ui/ui.dart';
 
 class LogExportService {
   static Future<void> exportLogs({
@@ -29,9 +30,7 @@ class LogExportService {
       if (destination == null || !context.mounted) return;
       await export(destination.path);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${l10n.logsExportedTo}${destination.path}')),
-        );
+        showAppToast(context, '${l10n.logsExportedTo}${destination.path}');
       }
     } catch (error) {
       if (context.mounted) {

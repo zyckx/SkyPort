@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/widgets.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/ui_state.dart';
@@ -13,18 +15,19 @@ String connectionStatusLabel(UiConnection connection, AppLocalizations l10n) =>
       UiConnection.disconnected || UiConnection.closed => l10n.disconnected,
     };
 
-Color connectionStatusColor(UiConnection connection, ThemeData theme) {
+Color connectionStatusColor(UiConnection connection, ShadThemeData theme) {
   final light = theme.brightness == Brightness.light;
   return switch (connection) {
     UiConnection.connected =>
-      light ? Colors.green.shade800 : Colors.green.shade300,
+      light ? Colors.green.shade700 : Colors.green.shade400,
     UiConnection.reconfiguring =>
       light ? Colors.blue.shade700 : Colors.blue.shade300,
     UiConnection.connecting ||
     UiConnection.reconnecting ||
     UiConnection.disconnecting ||
-    UiConnection.closing => theme.colorScheme.tertiary,
+    UiConnection.closing =>
+      light ? Colors.amber.shade800 : Colors.amber.shade400,
     UiConnection.disconnected ||
-    UiConnection.closed => theme.colorScheme.outline,
+    UiConnection.closed => theme.colorScheme.mutedForeground,
   };
 }

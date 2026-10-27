@@ -1,8 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/theme_provider.dart';
+import '../theme.dart';
+import 'ui/ui.dart';
 
 String _hex(Color color) =>
     '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
@@ -31,79 +35,57 @@ class ThemeColorSetting extends ConsumerWidget {
     final custom = preset.isEmpty;
     final name = custom ? l10n.customSeedColor : preset.first.$2;
 
-    return Tooltip(
+    return AppTooltip(
       message: _hex(seed),
-      child: ListTile(
+      child: AppListTile(
         key: const ValueKey('theme-color-scheme'),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-        minTileHeight: 64,
-        minLeadingWidth: 20,
-        horizontalTitleGap: 12,
-        leading: Icon(
-          Icons.palette_rounded,
-          size: 24,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-        title: Text(
-          l10n.themeColor,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        subtitle: Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        trailing: const Icon(Icons.chevron_right, size: 20),
+        icon: LucideIcons.palette,
+        title: l10n.themeColor,
+        subtitle: name,
+        trailing: _Swatch(color: seed),
         onTap: () async {
-          final chosen = await showDialog<Color>(
+          final chosen = await showShadDialog<Color>(
             context: context,
-            builder: (dialogContext) => AlertDialog(
+            builder: (dialogContext) => ShadDialog(
               title: Text(l10n.colorScheme),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: SingleChildScrollView(
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final (color, label) in presets)
-                        _SchemeTile(
-                          key: ValueKey('theme-preset-${color.toARGB32()}'),
-                          seed: color,
-                          label: label,
-                          selected: color.toARGB32() == seed.toARGB32(),
-                          onTap: () => Navigator.pop(dialogContext, color),
-                        ),
-                      _SchemeTile(
-                        key: const ValueKey('theme-custom-color'),
-                        seed: seed,
-                        label: l10n.customSeedColor,
-                        subtitle: custom ? _hex(seed) : null,
-                        selected: custom,
-                        onTap: () async {
-                          final color = await showDialog<Color>(
-                            context: dialogContext,
-                            builder: (_) => _CustomColorDialog(initial: seed),
-                          );
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext, color);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              constraints: const BoxConstraints(maxWidth: 440),
               actions: [
-                TextButton(
+                ShadButton.outline(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(
-                    MaterialLocalizations.of(context).cancelButtonLabel,
-                  ),
+                  child: Text(l10n.cancel),
                 ),
               ],
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final (color, label) in presets)
+                    _SchemeTile(
+                      key: ValueKey('theme-preset-${color.toARGB32()}'),
+                      seed: color,
+                      label: label,
+                      selected: color.toARGB32() == seed.toARGB32(),
+                      onTap: () => Navigator.pop(dialogContext, color),
+                    ),
+                  _SchemeTile(
+                    key: const ValueKey('theme-custom-color'),
+                    seed: seed,
+                    label: l10n.customSeedColor,
+                    subtitle: custom ? _hex(seed) : null,
+                    selected: custom,
+                    onTap: () async {
+                      final color = await showShadDialog<Color>(
+                        context: dialogContext,
+                        builder: (_) => _CustomColorDialog(initial: seed),
+                      );
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext, color);
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
           );
           if (chosen != null && context.mounted) {
@@ -111,6 +93,35 @@ class ThemeColorSetting extends ConsumerWidget {
           }
         },
       ),
+    );
+  }
+}
+
+class _Swatch extends StatelessWidget {
+  const _Swatch({required this.color});
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: ShadTheme.of(context).colorScheme.border),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Icon(
+          LucideIcons.chevronRight,
+          size: 16,
+          color: ShadTheme.of(context).colorScheme.mutedForeground,
+        ),
+      ],
     );
   }
 }
@@ -133,72 +144,68 @@ class _SchemeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = ShadTheme.of(context);
+    final colors = theme.colorScheme;
     final accessibleLabel = subtitle == null ? label : '$label, $subtitle';
     return Semantics(
       button: true,
       selected: selected,
       inMutuallyExclusiveGroup: true,
       label: accessibleLabel,
-      child: Tooltip(
+      child: AppTooltip(
         message: accessibleLabel,
-        child: InkWell(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            width: 82,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 70,
-                  height: 70,
-                  child: Stack(
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: SizedBox(
+              width: 82,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 62,
+                    height: 62,
                     alignment: Alignment.center,
-                    children: [
-                      Card(
-                        elevation: 0,
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: _SchemePreview(seed: seed, size: 42),
-                        ),
+                    decoration: BoxDecoration(
+                      borderRadius: theme.radius,
+                      border: Border.all(
+                        color: selected ? colors.ring : colors.border,
+                        width: selected ? 2 : 1,
                       ),
-                      if (selected)
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: colors.primary,
-                            shape: BoxShape.circle,
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        _SchemePreview(seed: seed, size: 40),
+                        if (selected)
+                          Icon(
+                            LucideIcons.check,
+                            color: colors.primaryForeground,
+                            size: 16,
                           ),
-                          child: SizedBox(
-                            width: 25,
-                            height: 25,
-                            child: Icon(
-                              Icons.check_rounded,
-                              color: colors.onPrimary,
-                              size: 12,
-                            ),
-                          ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (subtitle != null)
+                  const SizedBox(height: 4),
                   Text(
-                    subtitle!,
-                    maxLines: 1,
+                    label,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelSmall,
+                    style: theme.textTheme.small.copyWith(fontSize: 12),
                   ),
-              ],
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.muted.copyWith(fontSize: 11),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -207,6 +214,7 @@ class _SchemeTile extends StatelessWidget {
   }
 }
 
+/// Shows the accent colour the seed produces in the current brightness.
 class _SchemePreview extends StatelessWidget {
   const _SchemePreview({required this.seed, this.size = 48});
   final Color seed;
@@ -214,36 +222,13 @@ class _SchemePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: seed,
-      brightness: Theme.of(context).brightness,
-    );
+    final brightness = ShadTheme.of(context).brightness;
+    final accent = buildAccent(seed, brightness);
     return ExcludeSemantics(
-      child: SizedBox.square(
-        dimension: size,
-        child: ClipOval(
-          child: Column(
-            children: [
-              Expanded(
-                child: ColoredBox(
-                  color: scheme.primary,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: ColoredBox(color: scheme.secondaryContainer),
-                    ),
-                    Expanded(child: ColoredBox(color: scheme.tertiary)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
       ),
     );
   }
@@ -258,8 +243,11 @@ class _CustomColorDialog extends StatefulWidget {
 }
 
 class _CustomColorDialogState extends State<_CustomColorDialog> {
+  static const _channels = [('red', 16), ('green', 8), ('blue', 0)];
+
   late Color _draft;
   late final TextEditingController _controller;
+  late final Map<int, ShadSliderController> _sliders;
   bool _valid = true;
 
   @override
@@ -267,12 +255,28 @@ class _CustomColorDialogState extends State<_CustomColorDialog> {
     super.initState();
     _draft = widget.initial.withValues(alpha: 1);
     _controller = TextEditingController(text: _hex(_draft));
+    _sliders = {
+      for (final (_, shift) in _channels)
+        shift: ShadSliderController(initialValue: _channel(shift).toDouble()),
+    };
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    for (final slider in _sliders.values) {
+      slider.dispose();
+    }
     super.dispose();
+  }
+
+  int _channel(int shift) => (_draft.toARGB32() >> shift) & 0xff;
+
+  void _syncSliders() {
+    for (final MapEntry(key: shift, value: slider) in _sliders.entries) {
+      final value = _channel(shift).toDouble();
+      if (slider.value != value) slider.value = value;
+    }
   }
 
   void _editHex(String input) {
@@ -281,6 +285,7 @@ class _CustomColorDialogState extends State<_CustomColorDialog> {
       _valid = RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(text);
       if (_valid) {
         _draft = Color(0xff000000 | int.parse(text.substring(1), radix: 16));
+        _syncSliders();
       }
     });
   }
@@ -300,84 +305,76 @@ class _CustomColorDialogState extends State<_CustomColorDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final argb = _draft.toARGB32();
-    return AlertDialog(
+    final theme = ShadTheme.of(context);
+    final labels = {
+      'red': l10n.colorChannelRed,
+      'green': l10n.colorChannelGreen,
+      'blue': l10n.colorChannelBlue,
+    };
+    return ShadDialog(
       title: Text(l10n.customSeedColor),
-      content: SizedBox(
-        width: 360,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 64,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: _draft,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  _SchemePreview(seed: _draft),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(_hex(_draft))),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                key: const ValueKey('theme-color-hex'),
-                controller: _controller,
-                autocorrect: false,
-                enableSuggestions: false,
-                decoration: InputDecoration(
-                  labelText: l10n.seedColorHex,
-                  border: const OutlineInputBorder(),
-                  errorText: _valid ? null : l10n.seedColorHexError,
-                  errorMaxLines: 3,
-                ),
-                onChanged: _editHex,
-              ),
-              const SizedBox(height: 12),
-              for (final (id, label, shift, color) in [
-                ('red', l10n.colorChannelRed, 16, Colors.red),
-                ('green', l10n.colorChannelGreen, 8, Colors.green),
-                ('blue', l10n.colorChannelBlue, 0, Colors.blue),
-              ]) ...[
-                Text('$label · ${(argb >> shift) & 0xff}'),
-                Slider(
-                  key: ValueKey('theme-color-$id'),
-                  value: ((argb >> shift) & 0xff).toDouble(),
-                  max: 255,
-                  divisions: 255,
-                  activeColor: color,
-                  label: '${(argb >> shift) & 0xff}',
-                  semanticFormatterCallback: (value) =>
-                      '$label ${value.round()}',
-                  onChanged: (value) => _editChannel(shift, value),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      constraints: const BoxConstraints(maxWidth: 400),
       actions: [
-        TextButton(
+        ShadButton.outline(
           key: const ValueKey('theme-color-cancel'),
           onPressed: () => Navigator.pop(context),
-          child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          child: Text(l10n.cancel),
         ),
-        FilledButton(
+        ShadButton(
           key: const ValueKey('theme-color-apply'),
           onPressed: _valid ? () => Navigator.pop(context, _draft) : null,
           child: Text(l10n.applyColor),
         ),
       ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 64,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _draft,
+                  borderRadius: theme.radius,
+                  border: Border.all(color: theme.colorScheme.border),
+                ),
+              ),
+              const SizedBox(width: 12),
+              _SchemePreview(seed: _draft, size: 32),
+              const SizedBox(width: 12),
+              Expanded(child: Text(_hex(_draft))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          AppInput(
+            key: const ValueKey('theme-color-hex'),
+            controller: _controller,
+            label: l10n.seedColorHex,
+            errorText: _valid ? null : l10n.seedColorHexError,
+            onChanged: _editHex,
+          ),
+          const SizedBox(height: 12),
+          for (final (id, shift) in _channels) ...[
+            Text(
+              '${labels[id]} · ${_channel(shift)}',
+              style: theme.textTheme.small,
+            ),
+            const SizedBox(height: 4),
+            ShadSlider(
+              key: ValueKey('theme-color-$id'),
+              controller: _sliders[shift],
+              max: 255,
+              divisions: 255,
+              semanticFormatterCallback: (value) =>
+                  '${labels[id]} ${value.round()}',
+              onChanged: (value) => _editChannel(shift, value),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -1,9 +1,24 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/ui_state.dart';
 import '../../providers/ui_controller.dart';
-import '../shared/dropdown_builders.dart';
+import '../ui/ui.dart';
+
+const _baudRates = [
+  1200,
+  2400,
+  4800,
+  9600,
+  19200,
+  38400,
+  57600,
+  115200,
+  230400,
+  460800,
+  921600,
+];
 
 class SerialParamsWidget extends ConsumerWidget {
   const SerialParamsWidget({super.key});
@@ -36,6 +51,7 @@ class SerialParamsWidget extends ConsumerWidget {
       ),
     );
     final controller = ref.read(uiControllerProvider.notifier);
+    final l10n = AppLocalizations.of(context);
 
     return Column(
       children: [
@@ -43,65 +59,35 @@ class SerialParamsWidget extends ConsumerWidget {
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 250;
             return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   flex: compact ? 5 : 1,
-                  child: DropdownBuilders.buildDropdown<int>(
-                    context: context,
-                    initialSelection: state.baudRate,
-                    label: AppLocalizations.of(context).baudRate,
-                    entries: DropdownBuilders.createEntries([
-                      1200,
-                      2400,
-                      4800,
-                      9600,
-                      19200,
-                      38400,
-                      57600,
-                      115200,
-                      230400,
-                      460800,
-                      921600,
-                    ], (value) => value.toString()),
-                    onSelected: (value) =>
-                        value != null ? controller.setBaudRate(value) : null,
+                  child: AppSelect<int>(
+                    initialValue: state.baudRate,
+                    label: l10n.baudRate,
+                    options: [
+                      for (final rate in _baudRates) (rate, rate.toString()),
+                    ],
+                    onChanged: controller.setBaudRate,
                   ),
                 ),
                 SizedBox(width: compact ? 8 : 12),
                 Expanded(
                   flex: compact ? 4 : 1,
-                  child: Tooltip(
+                  child: AppTooltip(
                     message: state.flowControl == UiFlowControl.software
-                        ? AppLocalizations.of(
-                            context,
-                          ).flowControlSoftwareWarning
+                        ? l10n.flowControlSoftwareWarning
                         : '',
-                    child: DropdownBuilders.buildDropdown<UiFlowControl>(
-                      context: context,
-                      menuKey: ValueKey(Localizations.localeOf(context)),
-                      initialSelection: state.flowControl,
-                      label: AppLocalizations.of(context).flowControl,
-                      entries: [
-                        DropdownMenuEntry(
-                          value: UiFlowControl.none,
-                          label: AppLocalizations.of(context).flowControlNone,
-                        ),
-                        DropdownMenuEntry(
-                          value: UiFlowControl.hardware,
-                          label: AppLocalizations.of(
-                            context,
-                          ).flowControlHardware,
-                        ),
-                        DropdownMenuEntry(
-                          value: UiFlowControl.software,
-                          label: AppLocalizations.of(
-                            context,
-                          ).flowControlSoftware,
-                        ),
+                    child: AppSelect<UiFlowControl>(
+                      initialValue: state.flowControl,
+                      label: l10n.flowControl,
+                      options: [
+                        (UiFlowControl.none, l10n.flowControlNone),
+                        (UiFlowControl.hardware, l10n.flowControlHardware),
+                        (UiFlowControl.software, l10n.flowControlSoftware),
                       ],
-                      onSelected: (value) => value != null
-                          ? controller.setFlowControl(value)
-                          : null,
+                      onChanged: controller.setFlowControl,
                     ),
                   ),
                 ),
@@ -114,72 +100,47 @@ class SerialParamsWidget extends ConsumerWidget {
             alignment: Alignment.centerRight,
             child: Padding(
               padding: const EdgeInsets.only(right: 40, top: 4),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(
-                    Theme.of(context).colorScheme.primary,
-                  ),
-                ),
+              child: AppSpinner(
+                color: ShadTheme.of(context).colorScheme.primary,
               ),
             ),
           ),
         const SizedBox(height: 12),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: DropdownBuilders.buildDropdown<int>(
-                context: context,
-                initialSelection: state.dataBits,
-                entries: DropdownBuilders.createEntries([
-                  8,
-                  7,
-                  6,
-                  5,
-                ], (e) => e.toString()),
-                label: AppLocalizations.of(context).dataBits,
-                onSelected: (v) => v != null ? controller.setDataBits(v) : null,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DropdownBuilders.buildDropdown<int>(
-                context: context,
-                initialSelection: state.stopBits,
-                entries: DropdownBuilders.createEntries([
-                  1,
-                  2,
-                ], (e) => e.toString()),
-                label: AppLocalizations.of(context).stopBits,
-                onSelected: (v) => v != null ? controller.setStopBits(v) : null,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DropdownBuilders.buildDropdown<UiParity>(
-                context: context,
-                menuKey: ValueKey(Localizations.localeOf(context)),
-                initialSelection: state.parity,
-                entries: [
-                  DropdownMenuEntry<UiParity>(
-                    value: UiParity.none,
-                    label: AppLocalizations.of(context).parityNone,
-                  ),
-                  DropdownMenuEntry<UiParity>(
-                    value: UiParity.odd,
-                    label: AppLocalizations.of(context).parityOdd,
-                  ),
-                  DropdownMenuEntry<UiParity>(
-                    value: UiParity.even,
-                    label: AppLocalizations.of(context).parityEven,
-                  ),
+              child: AppSelect<int>(
+                initialValue: state.dataBits,
+                options: [
+                  for (final bits in [8, 7, 6, 5]) (bits, '$bits'),
                 ],
-                onSelected: (value) {
-                  if (value != null) controller.setParity(value);
-                },
-                label: AppLocalizations.of(context).parity,
+                label: l10n.dataBits,
+                onChanged: controller.setDataBits,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: AppSelect<int>(
+                initialValue: state.stopBits,
+                options: [
+                  for (final bits in [1, 2]) (bits, '$bits'),
+                ],
+                label: l10n.stopBits,
+                onChanged: controller.setStopBits,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: AppSelect<UiParity>(
+                initialValue: state.parity,
+                options: [
+                  (UiParity.none, l10n.parityNone),
+                  (UiParity.odd, l10n.parityOdd),
+                  (UiParity.even, l10n.parityEven),
+                ],
+                label: l10n.parity,
+                onChanged: controller.setParity,
               ),
             ),
           ],

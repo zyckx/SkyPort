@@ -1,41 +1,40 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show SelectableText;
+import 'package:flutter/widgets.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../utils/error_messages.dart';
+import '../ui/ui.dart';
 
 void showErrorNotice(BuildContext context, Object error, {String? message}) {
   final l10n = AppLocalizations.of(context);
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      persist: false,
-      showCloseIcon: true,
-      content: SelectableText(message ?? localizedError(l10n, error)),
-      action: SnackBarAction(
-        label: l10n.diagnosticDetails,
-        onPressed: () => showErrorDetails(context, error),
-      ),
-    ),
+  showAppToast(
+    context,
+    message ?? localizedError(l10n, error),
+    destructive: true,
+    actionLabel: l10n.diagnosticDetails,
+    onAction: () => showErrorDetails(context, error),
   );
 }
 
 Future<void> showErrorDetails(BuildContext context, Object error) {
   final l10n = AppLocalizations.of(context);
-  return showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(l10n.diagnosticDetails),
-      content: SizedBox(
-        width: 640,
-        child: SingleChildScrollView(
-          child: SelectableText(errorDiagnostics(error)),
-        ),
-      ),
-      actions: [
-        TextButton(
+  return showAppDialog<void>(
+    context,
+    title: l10n.diagnosticDetails,
+    actions: [
+      Builder(
+        builder: (context) => ShadButton.outline(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.close),
         ),
-      ],
+      ),
+    ],
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 420),
+      child: SingleChildScrollView(
+        child: SelectableText(errorDiagnostics(error)),
+      ),
     ),
   );
 }

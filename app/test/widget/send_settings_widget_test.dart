@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skyport/l10n/app_localizations.dart';
+import '../helpers/test_app.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:skyport/models/log_model.dart';
 import 'package:skyport/models/ui_state.dart';
 import 'package:skyport/providers/ui_controller.dart';
@@ -78,49 +79,46 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
+        child: shadTestApp(
+          home: const Scaffold(
             body: SizedBox(width: 280, child: SendSettingsWidget()),
           ),
         ),
       ),
     );
 
-    final dropdown = find.byType(DropdownMenu<UiNewline>);
-    EditableText selected() => tester.widget<EditableText>(
-      find.descendant(of: dropdown, matching: find.byType(EditableText)),
-    );
+    final dropdown = find.byType(ShadSelect<UiNewline>);
+    Finder selected(String label) =>
+        find.descendant(of: dropdown, matching: find.text(label));
     Future<void> choose(String label) async {
       await tester.tap(dropdown);
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(MenuItemButton, label));
+      await tester.tap(find.widgetWithText(ShadOption<UiNewline>, label));
       await tester.pumpAndSettle();
     }
 
-    expect(selected().controller.text, 'None');
+    expect(selected('None'), findsOneWidget);
     await choose(r'LF (\n)');
     expect(controller.append, isTrue);
     expect(controller.mode, UiNewline.lf);
-    expect(selected().controller.text, r'LF (\n)');
+    expect(selected(r'LF (\n)'), findsOneWidget);
 
     await choose('None');
     expect(controller.append, isFalse);
     expect(controller.mode, UiNewline.lf);
-    expect(selected().controller.text, 'None');
+    expect(selected('None'), findsOneWidget);
 
     await choose(r'CRLF (\r\n)');
     expect(controller.append, isTrue);
     expect(controller.mode, UiNewline.crlf);
-    expect(selected().controller.text, r'CRLF (\r\n)');
+    expect(selected(r'CRLF (\r\n)'), findsOneWidget);
 
     controller.update(hex: true);
     await tester.pumpAndSettle();
-    expect(tester.widget<DropdownMenu<UiNewline>>(dropdown).enabled, isFalse);
+    expect(tester.widget<ShadSelect<UiNewline>>(dropdown).enabled, isFalse);
     controller.update(hex: false);
     await tester.pumpAndSettle();
-    expect(selected().controller.text, r'CRLF (\r\n)');
+    expect(selected(r'CRLF (\r\n)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

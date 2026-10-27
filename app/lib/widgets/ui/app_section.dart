@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
-class SettingsSection extends StatelessWidget {
-  const SettingsSection({
+/// A titled group of controls separated by hairlines.
+class AppSection extends StatelessWidget {
+  const AppSection({
     super.key,
     required this.title,
     required this.children,
@@ -16,7 +18,7 @@ class SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final theme = ShadTheme.of(context);
     final colors = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -34,14 +36,15 @@ class SettingsSection extends StatelessWidget {
               child: Row(
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 18, color: colors.primary),
+                    Icon(icon, size: 16, color: colors.mutedForeground),
                     const SizedBox(width: 8),
                   ],
                   Expanded(
                     child: Text(
                       title,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: colors.primary,
+                      style: theme.textTheme.small.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colors.foreground,
                       ),
                     ),
                   ),
@@ -58,21 +61,14 @@ class SettingsSection extends StatelessWidget {
               ),
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0)
-                  Divider(
-                    height: 1,
-                    indent: 12,
-                    endIndent: 12,
-                    color: colors.outlineVariant,
-                  ),
-                children[i],
-              ],
-            ],
-          ),
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              ShadSeparator.horizontal(
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+                color: colors.border,
+              ),
+            children[i],
+          ],
         ],
       ),
     );

@@ -20,6 +20,7 @@ dependencies:
   ansi_escape_codes: ^4.0.1
   file_selector: ^1.0.3
   flutter_svg: ^2.3.0
+  shadcn_ui: ^0.57.3
 
 dev_dependencies:
   flutter_test:

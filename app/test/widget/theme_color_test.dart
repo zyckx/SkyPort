@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+import '../helpers/test_app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skyport/l10n/app_localizations.dart';
 import 'package:skyport/main.dart';
 import 'package:skyport/providers/common_providers.dart';
 import 'package:skyport/providers/theme_provider.dart';
 import 'package:skyport/providers/ui_controller.dart';
+import 'package:skyport/theme.dart';
 import 'package:skyport/widgets/application_settings.dart';
 
 import 'home_page_test.dart' show LayoutController;
@@ -42,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
     final context = tester.element(find.byType(HomePage));
     await tester.tap(
-      find.byTooltip(AppLocalizations.of(context).settingsPageLabel),
+      findTooltip(AppLocalizations.of(context).settingsPageLabel),
     );
     await tester.pumpAndSettle();
     return (prefs: prefs, context: context);
@@ -58,7 +61,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  final hexField = find.byKey(const ValueKey('theme-color-hex'));
+  final hexField = findInputText(const ValueKey('theme-color-hex'));
   final apply = find.byKey(const ValueKey('theme-color-apply'));
 
   testWidgets(
@@ -131,7 +134,11 @@ void main() {
     expect(app.prefs.getInt('theme_color'), Colors.red.toARGB32());
     expect(
       Theme.of(app.context).colorScheme,
-      ColorScheme.fromSeed(seedColor: Colors.red),
+      getLightTheme(Colors.red).colorScheme,
+    );
+    expect(
+      Theme.of(app.context).colorScheme.primary,
+      ColorScheme.fromSeed(seedColor: Colors.red).primary,
     );
     await tester.tap(find.byKey(const ValueKey('theme-color-scheme')));
     await tester.pumpAndSettle();
@@ -159,16 +166,14 @@ void main() {
     const seed = Color(0xffab34ef);
     final container = ProviderScope.containerOf(app.context);
     expect(container.read(themeColorProvider), seed);
+    expect(Theme.of(app.context).colorScheme, getLightTheme(seed).colorScheme);
     expect(
-      Theme.of(app.context).colorScheme,
-      ColorScheme.fromSeed(seedColor: seed),
+      Theme.of(app.context).colorScheme.primary,
+      ColorScheme.fromSeed(seedColor: seed).primary,
     );
     container.read(themeModeProvider.notifier).setThemeMode(ThemeMode.dark);
     await tester.pumpAndSettle();
-    expect(
-      Theme.of(app.context).colorScheme,
-      ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.dark),
-    );
+    expect(Theme.of(app.context).colorScheme, getDarkTheme(seed).colorScheme);
     await app.prefs.reload();
     final reloaded = ProviderContainer(
       overrides: [sharedPreferencesProvider.overrideWithValue(app.prefs)],
@@ -183,10 +188,14 @@ void main() {
     for (final invalid in ['#123', '123456', '#12345678', '#GG1234', '']) {
       await tester.enterText(hexField, invalid);
       await tester.pumpAndSettle();
-      expect(tester.widget<FilledButton>(apply).onPressed, isNull);
+      expect(tester.widget<ShadButton>(apply).onPressed, isNull);
       expect(
-        tester.widget<TextField>(hexField).decoration!.errorText,
-        isNotNull,
+        find.text(
+          AppLocalizations.of(
+            tester.element(find.byType(HomePage)),
+          ).seedColorHexError,
+        ),
+        findsOneWidget,
       );
       expect(app.prefs.getInt('theme_color'), Colors.blue.toARGB32());
     }
@@ -198,7 +207,7 @@ void main() {
     final container = ProviderScope.containerOf(app.context);
     for (final dismissal in ['cancel', 'back', 'barrier']) {
       await openCustom(tester);
-      expect(tester.widget<TextField>(hexField).controller!.text, '#123456');
+      expect(tester.widget<EditableText>(hexField).controller.text, '#123456');
       await tester.enterText(hexField, '#654321');
       await tester.pumpAndSettle();
       if (dismissal == 'cancel') {
@@ -224,15 +233,15 @@ void main() {
     final red = find.byKey(const ValueKey('theme-color-red'));
     final green = find.byKey(const ValueKey('theme-color-green'));
     final blue = find.byKey(const ValueKey('theme-color-blue'));
-    expect(tester.widget<Slider>(red).value, 0x12);
-    expect(tester.widget<Slider>(green).value, 0x34);
-    expect(tester.widget<Slider>(blue).value, 0x56);
+    expect(tester.widget<ShadSlider>(red).controller!.value, 0x12);
+    expect(tester.widget<ShadSlider>(green).controller!.value, 0x34);
+    expect(tester.widget<ShadSlider>(blue).controller!.value, 0x56);
     await tester.tapAt(tester.getCenter(red));
     await tester.pumpAndSettle();
-    final selected = tester.widget<Slider>(red).value.round();
+    final selected = tester.widget<ShadSlider>(red).controller!.value.round();
     final expected = Color.fromARGB(255, selected, 0x34, 0x56);
     expect(
-      tester.widget<TextField>(hexField).controller!.text,
+      tester.widget<EditableText>(hexField).controller.text,
       '#${expected.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
     );
     expect(app.prefs.getInt('theme_color'), Colors.blue.toARGB32());
@@ -281,17 +290,17 @@ void main() {
     final context = tester.element(find.byType(HomePage));
     final l10n = AppLocalizations.of(context);
     final container = ProviderScope.containerOf(context);
-    final settings = find.byTooltip(l10n.settingsPageLabel);
+    final settings = findTooltip(l10n.settingsPageLabel);
     await tester.tap(settings);
     await tester.pumpAndSettle();
     final buffer = find.descendant(
       of: find.byType(ApplicationSettings),
-      matching: find.byType(TextFormField),
+      matching: find.byType(EditableText),
     );
     await tester.ensureVisible(buffer);
     await tester.enterText(buffer, '256');
-    await tester.ensureVisible(find.byType(DropdownButton<ThemeMode>));
-    await tester.tap(find.byType(DropdownButton<ThemeMode>));
+    await tester.ensureVisible(find.byType(ShadSelect<ThemeMode>));
+    await tester.tap(find.byType(ShadSelect<ThemeMode>));
     await tester.pumpAndSettle();
     await tester.tap(find.text(l10n.dark).last);
     await tester.pumpAndSettle();
@@ -306,7 +315,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(settings);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextFormField>(buffer).controller!.text, '256');
+    expect(tester.widget<EditableText>(buffer).controller.text, '256');
     expect(
       container.read(uiControllerProvider).logCapacityBytes,
       128 * 1024 * 1024,
@@ -350,17 +359,17 @@ void main() {
     final controller =
         ProviderScope.containerOf(context).read(uiControllerProvider.notifier)
             as SettingsController;
-    await tester.tap(find.byTooltip(l10n.settingsPageLabel));
+    await tester.tap(findTooltip(l10n.settingsPageLabel));
     await tester.pumpAndSettle();
     final buffer = find.descendant(
       of: find.byType(ApplicationSettings),
-      matching: find.byType(TextFormField),
+      matching: find.byType(EditableText),
     );
     expect(buffer.hitTestable(), findsNothing);
     await tester.drag(
       find.descendant(
         of: find.byType(ApplicationSettings),
-        matching: find.byType(DropdownButton<ThemeMode>),
+        matching: find.byType(ShadSelect<ThemeMode>),
       ),
       const Offset(0, -500),
     );
@@ -381,7 +390,7 @@ void main() {
     expect(directory.hitTestable(), findsOneWidget);
     await tester.tap(directory);
     await tester.pumpAndSettle();
-    expect(find.text('/tmp/skyport-logs'), findsOneWidget);
+    expect(find.text('/tmp/skyport-logs'), findsWidgets);
     expect(prefs.getString('ui_log_export_path'), '/tmp/skyport-logs');
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/test_app.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:skyport/l10n/app_localizations.dart';
 import 'package:skyport/models/log_model.dart';
 import 'package:skyport/models/ui_state.dart';
 import 'package:skyport/providers/ui_controller.dart';
@@ -66,11 +67,7 @@ UiState sendState({
 
 Widget app(FakeUiController controller) => ProviderScope(
   overrides: [uiControllerProvider.overrideWith(() => controller)],
-  child: const MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(body: SendInputWidget()),
-  ),
+  child: shadTestApp(home: const Scaffold(body: SendInputWidget())),
 );
 
 void main() {
@@ -87,7 +84,7 @@ void main() {
           ),
         ),
       );
-      final input = find.byType(TextFormField);
+      final input = find.byType(EditableText);
       await tester.enterText(input, 'draft');
       await tester.pump();
       Future<void> key(LogicalKeyboardKey key) async {
@@ -95,7 +92,7 @@ void main() {
         await tester.pump();
       }
 
-      String text() => tester.widget<TextFormField>(input).controller!.text;
+      String text() => tester.widget<EditableText>(input).controller.text;
       await key(LogicalKeyboardKey.arrowUp);
       expect(text(), 'two');
       await key(LogicalKeyboardKey.arrowUp);
@@ -107,13 +104,13 @@ void main() {
       await key(LogicalKeyboardKey.arrowDown);
       expect(text(), 'draft');
       await tester.enterText(input, 'first\nsecond');
-      tester.widget<TextFormField>(input).controller!.selection =
+      tester.widget<EditableText>(input).controller.selection =
           const TextSelection.collapsed(offset: 12);
       await tester.pump();
       expect(text(), 'first\nsecond');
       await key(LogicalKeyboardKey.arrowUp);
       expect(text(), 'first\nsecond');
-      tester.widget<TextFormField>(input).controller!.selection =
+      tester.widget<EditableText>(input).controller.selection =
           const TextSelection.collapsed(offset: 0);
       await key(LogicalKeyboardKey.arrowDown);
       expect(text(), 'first\nsecond');
@@ -166,18 +163,18 @@ void main() {
         sendState(connection: UiConnection.connected),
       );
       await tester.pumpWidget(app(controller));
-      final input = find.byType(TextFormField);
+      final input = find.byType(EditableText);
       await tester.enterText(input, '中');
       await tester.pump();
       controller.updateMode(true, 'E4 B8 AD');
       await tester.pump();
-      expect(tester.widget<TextFormField>(input).controller!.text, 'E4 B8 AD');
+      expect(tester.widget<EditableText>(input).controller.text, 'E4 B8 AD');
       controller.updateMode(false, '中');
       await tester.pump();
-      expect(tester.widget<TextFormField>(input).controller!.text, '中');
-      await tester.tap(find.byType(FilledButton));
+      expect(tester.widget<EditableText>(input).controller.text, '中');
+      await tester.tap(find.byType(ShadButton));
       await tester.pump();
-      expect(tester.widget<TextFormField>(input).controller!.text, '中');
+      expect(tester.widget<EditableText>(input).controller.text, '中');
     },
   );
   testWidgets('validates hex input at the UI intent boundary', (tester) async {
@@ -188,29 +185,29 @@ void main() {
         ),
       ),
     );
-    await tester.enterText(find.byType(TextFormField), 'ABC');
+    await tester.enterText(find.byType(EditableText), 'ABC');
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<ShadButton>(find.byType(ShadButton)).onPressed,
       isNull,
     );
-    await tester.enterText(find.byType(TextFormField), ' \t\n');
+    await tester.enterText(find.byType(EditableText), ' \t\n');
     await tester.pumpAndSettle();
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<ShadButton>(find.byType(ShadButton)).onPressed,
       isNull,
     );
-    await tester.enterText(find.byType(TextFormField), '0G');
+    await tester.enterText(find.byType(EditableText), '0G');
     await tester.pumpAndSettle();
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<ShadButton>(find.byType(ShadButton)).onPressed,
       isNull,
     );
-    await tester.enterText(find.byType(TextFormField), 'AB CD');
+    await tester.enterText(find.byType(EditableText), 'AB CD');
     await tester.pumpAndSettle();
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<ShadButton>(find.byType(ShadButton)).onPressed,
       isNotNull,
     );
   });
@@ -223,23 +220,23 @@ void main() {
     );
     await tester.pumpWidget(app(controller));
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<ShadButton>(find.byType(ShadButton)).onPressed,
       isNull,
     );
-    await tester.enterText(find.byType(TextFormField), 'hello');
+    await tester.enterText(find.byType(EditableText), 'hello');
     await tester.pump();
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<ShadButton>(find.byType(ShadButton)).onPressed,
       isNotNull,
     );
     controller.simulateDisconnect();
     await tester.pump();
     expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      tester.widget<ShadButton>(find.byType(ShadButton)).onPressed,
       isNull,
     );
     expect(
-      tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text,
+      tester.widget<EditableText>(find.byType(EditableText)).controller.text,
       'hello',
     );
   });

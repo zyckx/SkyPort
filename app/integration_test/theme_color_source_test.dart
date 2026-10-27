@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../test/helpers/test_app.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skyport/l10n/app_localizations.dart';
@@ -55,7 +56,7 @@ void main() {
 
     final home = tester.element(find.byType(HomePage));
     final l10n = AppLocalizations.of(home);
-    await tester.tap(find.byTooltip(l10n.settingsPageLabel));
+    await tester.tap(findTooltip(l10n.settingsPageLabel));
     await tester.pumpAndSettle();
 
     if (systemAccent == null) {

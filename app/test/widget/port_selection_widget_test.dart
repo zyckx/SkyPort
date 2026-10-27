@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../helpers/test_app.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:skyport/l10n/app_localizations.dart';
 import 'package:skyport/models/log_model.dart';
 import 'package:skyport/models/ui_state.dart';
@@ -73,23 +75,20 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(body: PortSelectionWidget()),
-          ),
+          child: shadTestApp(home: const Scaffold(body: PortSelectionWidget())),
         ),
       );
 
-      DropdownMenu<String> selector() =>
-          tester.widget(find.byType(DropdownMenu<String>));
-      FilledButton action() => tester.widget(find.byType(FilledButton));
+      final select = find.byType(ShadSelect<String>);
+      Iterable<String> options() => tester
+          .widget<ShadSelect<String>>(select)
+          .options!
+          .map((option) => (option as ShadOption<String>).value);
+      ShadButton action() => tester.widget(find.byType(ShadButton));
       final l10n = AppLocalizations.of(
         tester.element(find.byType(PortSelectionWidget)),
       );
-      expect(selector().dropdownMenuEntries.map((entry) => entry.value), [
-        '/dev/ttyS0',
-      ]);
+      expect(options(), ['/dev/ttyS0']);
       expect(find.text('${l10n.unavailable}: /dev/ttyUSB0'), findsOneWidget);
       expect(action().onPressed, isNull);
 
@@ -98,33 +97,25 @@ void main() {
       controller.updatePorts(['/dev/ttyS0', '/dev/ttyUSB0']);
       await tester.pump();
 
-      expect(selector().dropdownMenuEntries.map((entry) => entry.value), [
-        '/dev/ttyS0',
-        '/dev/ttyUSB0',
-      ]);
+      expect(options(), ['/dev/ttyS0', '/dev/ttyUSB0']);
       expect(find.text('${l10n.unavailable}: /dev/ttyUSB0'), findsNothing);
-      final selectorText = tester.widget<EditableText>(
-        find.descendant(
-          of: find.byType(DropdownMenu<String>),
-          matching: find.byType(EditableText),
-        ),
+      expect(
+        find.descendant(of: select, matching: find.text('/dev/ttyUSB0')),
+        findsOneWidget,
       );
-      expect(selectorText.controller.text, '/dev/ttyUSB0');
-      await tester.tap(find.byIcon(Icons.keyboard_arrow_down));
+      await tester.tap(select);
       await tester.pumpAndSettle();
       expect(
-        find.widgetWithText(MenuItemButton, '/dev/ttyS0').hitTestable(),
+        find.widgetWithText(ShadOption<String>, '/dev/ttyS0').hitTestable(),
         findsOneWidget,
       );
       await tester.tapAt(const Offset(0, 400));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(FilledButton));
+      await tester.tap(find.byType(ShadButton));
       expect(controller.connects, 1);
       controller.updatePorts(['/dev/ttyS0']);
       await tester.pump();
-      expect(selector().dropdownMenuEntries.map((entry) => entry.value), [
-        '/dev/ttyS0',
-      ]);
+      expect(options(), ['/dev/ttyS0']);
       expect(action().onPressed, isNull);
 
       controller.updatePorts([]);
@@ -138,7 +129,7 @@ void main() {
         findsOneWidget,
       );
       expect(action().onPressed, isNotNull);
-      await tester.tap(find.byType(FilledButton));
+      await tester.tap(find.byType(ShadButton));
       expect(controller.disconnects, 1);
     },
   );
