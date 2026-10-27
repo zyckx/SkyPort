@@ -179,6 +179,7 @@ class _SendInputWidgetState extends ConsumerState<SendInputWidget> {
     return AppTooltip(
       message: label,
       child: ShadButton(
+        key: const ValueKey('send-button'),
         height: 40,
         padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 20),
         onPressed: connectionState == UiConnection.connected && canSend

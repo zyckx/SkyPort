@@ -151,6 +151,7 @@ class StatusBar extends ConsumerWidget {
               ),
               if (diagnostic != null)
                 AppIconButton(
+                  key: const ValueKey('status-diagnostic'),
                   tooltip:
                       '${l10n.diagnosticDetails}: ${localizedError(l10n, diagnostic)}',
                   icon: LucideIcons.info,

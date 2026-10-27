@@ -21,7 +21,6 @@ import 'package:skyport/src/rust/frb_generated.dart';
 import 'package:skyport/utils/error_messages.dart';
 import 'package:skyport/widgets/nav_rail.dart';
 import 'package:skyport/widgets/right_panel/send_input_widget.dart';
-import 'package:skyport/widgets/application_settings.dart';
 import 'package:skyport/widgets/left_panel/send_settings_widget.dart';
 import 'package:skyport/widgets/left_panel/serial_params_widget.dart';
 import 'package:skyport/widgets/status_bar.dart';
@@ -133,11 +132,12 @@ void main() {
 
       final input = find.descendant(
         of: find.byType(SendInputWidget),
-        matching: find.byType(TextField),
+        matching: find.byType(EditableText),
       );
+      final sendButton = find.byKey(const ValueKey('send-button'));
       await tester.enterText(input, 'PTY');
       await tester.pump();
-      await tester.tap(find.byIcon(LucideIcons.send));
+      await tester.tap(sendButton);
       await _until(
         tester,
         () => container!.read(uiControllerProvider).rxBytes == 5,
@@ -178,12 +178,12 @@ void main() {
       await tester.tap(input);
       await tester.enterText(input, draft);
       await tester.pump();
-      final inputController = tester.widget<TextField>(input).controller!;
+      final inputController = tester.widget<EditableText>(input).controller;
       expect(inputController.text, draft);
       await tester.tap(findTooltip(l10n.settingsPageLabel));
       await tester.pumpAndSettle();
       final capacityInput = find.descendant(
-        of: find.byType(ApplicationSettings),
+        of: find.byKey(const ValueKey('log-buffer-input')),
         matching: find.byType(EditableText),
       );
       await tester.ensureVisible(capacityInput);
@@ -350,7 +350,7 @@ void main() {
       await _until(tester, () => container!.read(uiControllerProvider).hexSend);
       await tester.enterText(input, '41 42');
       await tester.pump();
-      await tester.tap(find.byIcon(LucideIcons.send));
+      await tester.tap(sendButton);
       await _until(
         tester,
         () => container!.read(uiControllerProvider).txBytes == 11,
@@ -361,8 +361,8 @@ void main() {
         tester,
         () => !container!.read(uiControllerProvider).hexSend,
       );
-      expect(tester.widget<TextField>(input).controller!.text, 'AB');
-      await tester.tap(find.byIcon(LucideIcons.send));
+      expect(tester.widget<EditableText>(input).controller.text, 'AB');
+      await tester.tap(sendButton);
       await _until(
         tester,
         () => container!.read(uiControllerProvider).txBytes == 15,
@@ -595,7 +595,7 @@ void main() {
       );
       final reconnectingNotice = strings.disconnectedReconnecting;
       final noticeText = find.descendant(
-        of: find.byType(SnackBar),
+        of: find.byType(ShadToast),
         matching: find.byType(SelectableText),
       );
       expect(
@@ -605,8 +605,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(
         find.descendant(
-          of: find.byType(SnackBar),
-          matching: find.byType(IconButton),
+          of: find.byType(ShadToast),
+          matching: find.byIcon(LucideIcons.x),
         ),
       );
       await tester.pumpAndSettle();
@@ -632,7 +632,7 @@ void main() {
         container.read(uiControllerProvider).connection,
         UiConnection.reconnecting,
       );
-      expect(find.byType(SnackBar), findsNothing);
+      expect(find.byType(ShadToast), findsNothing);
       expect(
         find.descendant(
           of: find.byType(StatusBar),
@@ -641,20 +641,21 @@ void main() {
         findsOneWidget,
       );
       final diagnostic = container.read(uiControllerProvider).error!;
-      await tester.tap(find.byIcon(Icons.info_outline));
+      final diagnosticButton = find.byKey(const ValueKey('status-diagnostic'));
+      await tester.tap(diagnosticButton);
       await tester.pumpAndSettle();
       expect(
         tester
             .widget<SelectableText>(
               find.descendant(
-                of: find.byType(AlertDialog),
+                of: find.byType(ShadDialog),
                 matching: find.byType(SelectableText),
               ),
             )
             .data,
         contains(diagnostic.message),
       );
-      await tester.tap(find.widgetWithText(TextButton, strings.close));
+      await tester.tap(find.widgetWithText(ShadButton, strings.close));
       await tester.pumpAndSettle();
 
       await tester.runAsync(() => _ptyControl('replace'));
@@ -665,8 +666,8 @@ void main() {
             UiConnection.connected,
       );
       expect(container.read(uiControllerProvider).error, isNull);
-      expect(find.byIcon(Icons.info_outline), findsNothing);
-      expect(find.byType(SnackBar), findsNothing);
+      expect(diagnosticButton, findsNothing);
+      expect(find.byType(ShadToast), findsNothing);
 
       await tester.runAsync(() => _ptyControl('unplug2'));
       await _until(
@@ -676,12 +677,7 @@ void main() {
             UiConnection.reconnecting,
       );
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.ancestor(
-          of: find.byIcon(Icons.circle),
-          matching: find.byType(IconButton),
-        ),
-      );
+      await tester.tap(power);
       await _until(
         tester,
         () =>
@@ -689,9 +685,7 @@ void main() {
             UiConnection.disconnected,
       );
       // Clear the second loss notice before checking the manual failure.
-      ScaffoldMessenger.of(
-        tester.element(find.byType(HomePage)),
-      ).clearSnackBars();
+      ShadToaster.of(tester.element(find.byType(HomePage))).hide();
       await tester.pumpAndSettle();
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 1500)),
