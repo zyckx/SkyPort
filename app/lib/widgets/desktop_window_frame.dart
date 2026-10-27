@@ -1,17 +1,25 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/widgets.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/app_logger.dart';
+import 'ui/ui.dart';
+
+/// Widths shared with the native runners' title bar hit testing.
+const double kCaptionButtonWidth = 46;
+const double kTitlebarToolWidth = 46;
 
 /// Native hit testing uses the same 48px bar and 46px caption-button widths.
 class DesktopWindowFrame extends StatefulWidget {
-  const DesktopWindowFrame({required this.child, super.key});
+  const DesktopWindowFrame({required this.child, this.tool, super.key});
   final Widget child;
+
+  /// Optional compact control shown left of the caption buttons.
+  final Widget? tool;
 
   @override
   State<DesktopWindowFrame> createState() => _DesktopWindowFrameState();
@@ -46,7 +54,7 @@ class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
     if (!_supported) return;
     final configuration = (
       title: AppLocalizations.of(context).appTitle,
-      dark: Theme.of(context).brightness == Brightness.dark,
+      dark: ShadTheme.of(context).brightness == Brightness.dark,
     );
     if (_configuration == configuration) return;
     _configuration = configuration;
@@ -105,79 +113,77 @@ class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
   @override
   Widget build(BuildContext context) {
     if (!_supported) return widget.child;
-    final theme = Theme.of(context);
+    final theme = ShadTheme.of(context);
+    final colors = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
     final foreground = _window.active
-        ? theme.colorScheme.onSurface
-        : theme.colorScheme.onSurfaceVariant;
+        ? colors.foreground
+        : colors.mutedForeground;
     return Overlay.wrap(
       child: Column(
         children: [
-          Material(
-            color: theme.colorScheme.surfaceContainerLow,
-            child: SizedBox(
-              height: 48,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: theme.colorScheme.outlineVariant,
-                      width: 0.5,
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: colors.background,
+              border: Border(bottom: BorderSide(color: colors.border)),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: SvgPicture.asset(
+                    'assets/icon.svg',
+                    width: 22,
+                    height: 22,
+                    excludeFromSemantics: true,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.appTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.large.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: foreground,
                     ),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 16),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(5),
-                      child: SvgPicture.asset(
-                        'assets/icon.svg',
-                        width: 24,
-                        height: 24,
-                        excludeFromSemantics: true,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        l10n.appTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: foreground,
-                        ),
-                      ),
-                    ),
-                    _CaptionButton(
-                      label: l10n.windowMinimize,
-                      icon: Icons.remove,
-                      foreground: foreground,
-                      onPressed: () => unawaited(_invoke('minimize')),
-                    ),
-                    _CaptionButton(
-                      label: _window.maximized
-                          ? l10n.windowRestore
-                          : l10n.windowMaximize,
-                      icon: _window.maximized
-                          ? Icons.filter_none
-                          : Icons.crop_square,
-                      foreground: foreground,
-                      nativeHovered: _window.maximizeHovered,
-                      onPressed: () => unawaited(_invoke('toggleMaximize')),
-                    ),
-                    _CaptionButton(
-                      label: l10n.windowClose,
-                      icon: Icons.close,
-                      foreground: foreground,
-                      isClose: true,
-                      onPressed: () => unawaited(_invoke('close')),
-                    ),
-                  ],
+                // Native hit testing reserves this slot as client area.
+                SizedBox(
+                  width: kTitlebarToolWidth,
+                  height: 48,
+                  child: Center(child: widget.tool),
                 ),
-              ),
+                _CaptionButton(
+                  label: l10n.windowMinimize,
+                  icon: LucideIcons.minus,
+                  foreground: foreground,
+                  onPressed: () => unawaited(_invoke('minimize')),
+                ),
+                _CaptionButton(
+                  label: _window.maximized
+                      ? l10n.windowRestore
+                      : l10n.windowMaximize,
+                  icon: _window.maximized
+                      ? LucideIcons.copy
+                      : LucideIcons.square,
+                  foreground: foreground,
+                  nativeHovered: _window.maximizeHovered,
+                  onPressed: () => unawaited(_invoke('toggleMaximize')),
+                ),
+                _CaptionButton(
+                  label: l10n.windowClose,
+                  icon: LucideIcons.x,
+                  foreground: foreground,
+                  isClose: true,
+                  onPressed: () => unawaited(_invoke('close')),
+                ),
+              ],
             ),
           ),
           Expanded(child: widget.child),
@@ -187,7 +193,7 @@ class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
   }
 }
 
-class _CaptionButton extends StatelessWidget {
+class _CaptionButton extends StatefulWidget {
   const _CaptionButton({
     required this.label,
     required this.icon,
@@ -205,44 +211,43 @@ class _CaptionButton extends StatelessWidget {
   final bool isClose;
 
   @override
+  State<_CaptionButton> createState() => _CaptionButtonState();
+}
+
+class _CaptionButtonState extends State<_CaptionButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final hover = Theme.of(
-      context,
-    ).colorScheme.onSurface.withValues(alpha: 0.1);
-    return SizedBox(
-      width: 46,
-      height: 48,
-      child: IconButton(
-        tooltip: label,
-        onPressed: onPressed,
-        icon: Icon(icon, size: 18),
-        style: ButtonStyle(
-          shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
-          padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (isClose &&
-                (states.contains(WidgetState.hovered) ||
-                    states.contains(WidgetState.pressed))) {
-              return Colors.white;
-            }
-            return foreground;
-          }),
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (isClose &&
-                (states.contains(WidgetState.hovered) ||
-                    states.contains(WidgetState.pressed))) {
-              return const Color(0xffc42b1c);
-            }
-            return nativeHovered ? hover : Colors.transparent;
-          }),
-          overlayColor: WidgetStateProperty.resolveWith((states) {
-            if (isClose &&
-                (states.contains(WidgetState.hovered) ||
-                    states.contains(WidgetState.pressed))) {
-              return Colors.transparent;
-            }
-            return null;
-          }),
+    final colors = ShadTheme.of(context).colorScheme;
+    final hovered = _hovered || widget.nativeHovered;
+    final closeHot = widget.isClose && _hovered;
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: AppTooltip(
+        message: widget.label,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onPressed,
+            child: Container(
+              width: kCaptionButtonWidth,
+              height: 48,
+              color: closeHot
+                  ? const Color(0xffc42b1c)
+                  : hovered
+                  ? colors.accent
+                  : const Color(0x00000000),
+              child: Icon(
+                widget.icon,
+                size: 16,
+                color: closeHot ? const Color(0xffffffff) : widget.foreground,
+              ),
+            ),
+          ),
         ),
       ),
     );

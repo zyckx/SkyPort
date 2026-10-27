@@ -169,8 +169,9 @@ static void titlebar_capture_pressed_cb(GtkGestureMultiPress* gesture,
       gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(gesture));
   // Gesture coordinates are view-local even when the event targets FlView's
   // internal event box. GDK keeps the original root coordinates and device.
+  // The rightmost 4 slots of 46px are caption buttons plus one Flutter tool.
   if (x < 0 || y < 0 || y >= 48 ||
-      x >= gtk_widget_get_allocated_width(view) - 3 * 46 ||
+      x >= gtk_widget_get_allocated_width(view) - 4 * 46 ||
       (button_event->button != 1 && button_event->button != 3)) {
     WindowState* state = static_cast<WindowState*>(
         g_object_get_data(G_OBJECT(user_data), "window-state"));

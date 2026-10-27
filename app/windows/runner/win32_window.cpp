@@ -20,6 +20,8 @@ namespace {
 constexpr UINT_PTR kFlutterChildSubclassId = 1;
 constexpr int kTitlebarHeight = 48;
 constexpr int kCaptionButtonWidth = 46;
+// Flutter-drawn title bar tools left of the caption buttons stay client area.
+constexpr int kTitlebarToolSlots = 1;
 
 void SetImmersiveDarkMode(HWND window, BOOL dark) {
   if (FAILED(DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE,
@@ -405,7 +407,8 @@ LRESULT Win32Window::HitTest(POINT screen_point) const noexcept {
 
   if (point.y < MulDiv(kTitlebarHeight, dpi, 96)) {
     const int controls_left =
-        client.right - MulDiv(3 * kCaptionButtonWidth, dpi, 96);
+        client.right -
+        MulDiv((3 + kTitlebarToolSlots) * kCaptionButtonWidth, dpi, 96);
     const int maximize_left =
         client.right - MulDiv(2 * kCaptionButtonWidth, dpi, 96);
     const int close_left =
